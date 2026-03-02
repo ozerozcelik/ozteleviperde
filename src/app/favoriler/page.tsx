@@ -1,0 +1,485 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { OzTeleviLogo, OzTeleviLogoLight } from '@/components/OzTeleviLogo'
+import { useFavorites } from '@/contexts/FavoritesContext'
+
+// ============================================
+// Types
+// ============================================
+interface FavoriteProduct {
+  id: string
+  name: string
+  slug: string
+  description: string
+  price: number
+  currency: string
+  category: string
+  image: string | null
+  inStock: boolean
+  featured: boolean
+}
+
+interface Favorite {
+  id: string
+  productId: string
+  product: FavoriteProduct
+  createdAt: string
+}
+
+// ============================================
+// Category Labels
+// ============================================
+const categoryLabels: Record<string, string> = {
+  'perdeler': 'Perdeler',
+  'tekstiller': 'Tekstiller',
+  'yatak-odasi': 'Yatak Odası',
+  'aksesuarlar': 'Aksesuarlar',
+}
+
+// ============================================
+// Favorites Page
+// ============================================
+export default function FavoritesPage() {
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { favorites, isLoading, removeFromFavorites } = useFavorites()
+  const router = useRouter()
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const formatPrice = (price: number, currency: string) => {
+    return `${price.toLocaleString('tr-TR')} ${currency}'den başlayan`
+  }
+
+  const handleRemoveFavorite = async (productId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    await removeFromFavorites(productId)
+  }
+
+  const navLinks = [
+    { href: '/', label: 'Ana Sayfa' },
+    { href: '/#felsefe', label: 'Felsefemiz' },
+    { href: '/#koleksiyon', label: 'Koleksiyon' },
+    { href: '/galeri', label: 'Galeri' },
+  ]
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Navigation */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ${
+          isScrolled
+            ? 'bg-background/95 backdrop-blur-md shadow-sm'
+            : 'bg-background/80'
+        }`}
+      >
+        <nav className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            <OzTeleviLogo />
+
+            <div className="hidden md:flex items-center gap-10">
+              {navLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={`text-sm tracking-wide transition-all duration-500 relative ${
+                    link.href === '/favoriler'
+                      ? 'text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+
+            <div className="hidden md:flex items-center gap-4">
+              <a
+                href="/#iletisim"
+                className="px-6 py-2.5 bg-foreground text-background text-sm tracking-wide rounded-full transition-all duration-500 hover:bg-foreground/90 hover:shadow-lg"
+              >
+                Bize Ulaşın
+              </a>
+            </div>
+
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 text-foreground"
+              aria-label="Menüyü aç/kapat"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                className="w-6 h-6"
+              >
+                {isMobileMenuOpen ? (
+                  <path d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
+
+          <div
+            className={`md:hidden overflow-hidden transition-all duration-500 ${
+              isMobileMenuOpen ? 'max-h-80 pb-6' : 'max-h-0'
+            }`}
+          >
+            <div className="flex flex-col gap-4 pt-4">
+              {navLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors duration-300 py-2"
+                >
+                  {link.label}
+                </a>
+              ))}
+              <a
+                href="/#iletisim"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="mt-2 px-6 py-3 bg-foreground text-background text-center text-sm tracking-wide rounded-full"
+              >
+                Bize Ulaşın
+              </a>
+            </div>
+          </div>
+        </nav>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 pt-20">
+        {/* Hero Section */}
+        <section className="py-16 md:py-24 bg-background">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <p className="text-sm tracking-[0.3em] uppercase text-muted-foreground mb-6">
+                Favorilerim
+              </p>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-light text-foreground leading-tight">
+                Beğendiğiniz <span className="font-normal italic">Ürünler</span>
+              </h1>
+              <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
+                Kalbinizi kazanan ürünleri burada bulabilirsiniz.
+              </p>
+            </div>
+
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground"></div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoading && favorites.length === 0 && (
+              <div className="text-center py-16">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-sand-100 flex items-center justify-center">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    className="w-10 h-10 text-muted-foreground/40"
+                  >
+                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-light text-foreground mb-4">
+                  Henüz favori ürününüz yok
+                </h2>
+                <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+                  Beğendiğiniz ürünleri kalp ikonuna tıklayarak favorilere ekleyebilirsiniz.
+                </p>
+                <Link
+                  href="/galeri"
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-foreground text-background text-sm tracking-wide rounded-full transition-all duration-500 hover:bg-foreground/90 hover:shadow-xl"
+                >
+                  Galeriyi Keşfet
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="w-4 h-4"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
+            )}
+
+            {/* Favorites Grid */}
+            {!isLoading && favorites.length > 0 && (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {favorites.map((favorite: Favorite) => (
+                  <article
+                    key={favorite.id}
+                    className="group relative"
+                  >
+                    <Link
+                      href={`/urun/${favorite.product.slug}`}
+                      className="block"
+                    >
+                      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-sand-100 mb-5">
+                        {favorite.product.image ? (
+                          <Image
+                            src={favorite.product.image}
+                            alt={favorite.product.name}
+                            fill
+                            className="object-cover transition-transform duration-700 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              className="w-12 h-12"
+                            >
+                              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-foreground/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        
+                        {/* Category Badge */}
+                        <span className="absolute top-4 left-4 px-3 py-1 bg-background/90 backdrop-blur-sm text-xs tracking-wide rounded-full text-foreground font-medium">
+                          {categoryLabels[favorite.product.category] || favorite.product.category}
+                        </span>
+
+                        {/* In Stock Badge */}
+                        {favorite.product.inStock && (
+                          <span className="absolute top-4 right-4 px-3 py-1 bg-sage-100 text-xs tracking-wide rounded-full text-sage-400 font-medium">
+                            Stokta
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-lg font-medium text-foreground mb-1 group-hover:text-muted-foreground transition-colors duration-300">
+                        {favorite.product.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                        {favorite.product.description}
+                      </p>
+                      <p className="text-sm font-medium text-foreground">
+                        {formatPrice(favorite.product.price, favorite.product.currency)}
+                      </p>
+                    </Link>
+
+                    {/* Remove from favorites button */}
+                    <button
+                      onClick={(e) => handleRemoveFavorite(favorite.productId, e)}
+                      className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white hover:scale-110 z-10"
+                      aria-label="Favorilerden çıkar"
+                      style={{ right: favorite.product.inStock ? '4rem' : '1rem', top: '4rem' }}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-5 h-5 text-red-500"
+                      >
+                        <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <Footer />
+    </div>
+  )
+}
+
+// ============================================
+// Footer Component
+// ============================================
+function Footer() {
+  const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setSubmitStatus('idle')
+
+    try {
+      const response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setSubmitStatus('success')
+        setEmail('')
+      } else {
+        setSubmitStatus('error')
+      }
+    } catch {
+      setSubmitStatus('error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <footer className="bg-foreground text-background py-16 md:py-20">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+          {/* Brand */}
+          <div className="lg:col-span-2">
+            <OzTeleviLogoLight />
+            <p className="mt-6 text-background/70 leading-relaxed max-w-md">
+              Japon estetiğinin sade güzelliği ve İskandinav sadeliğinden ilham alan,
+              el işçiliği tekstiller ve perdeler. Her parça, yaşam alanınıza huzur,
+              doğal ışık ve zamansız bir zarafet davetiyesidir.
+            </p>
+          </div>
+
+          {/* Quick Links */}
+          <div>
+            <h4 className="text-sm tracking-widest uppercase text-background/50 mb-6">
+              Hızlı Linkler
+            </h4>
+            <ul className="space-y-3">
+              <li>
+                <a href="/#felsefe" className="text-background/70 hover:text-background transition-colors duration-300">
+                  Felsefemiz
+                </a>
+              </li>
+              <li>
+                <a href="/#koleksiyon" className="text-background/70 hover:text-background transition-colors duration-300">
+                  Koleksiyon
+                </a>
+              </li>
+              <li>
+                <a href="/galeri" className="text-background/70 hover:text-background transition-colors duration-300">
+                  Galeri
+                </a>
+              </li>
+              <li>
+                <a href="/#iletisim" className="text-background/70 hover:text-background transition-colors duration-300">
+                  İletişim
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <h4 className="text-sm tracking-widest uppercase text-background/50 mb-6">
+              İletişim
+            </h4>
+            <ul className="space-y-3 text-background/70">
+              <li className="flex items-center gap-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
+                  <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span>info@oztelevi.com</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
+                  <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                <span>+90 (212) 555 0123</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4 mt-0.5">
+                  <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Teşvikiye Mah., Bağdar Caddesi No:42, Şişli, İstanbul</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Newsletter */}
+        <div className="border-t border-background/10 pt-12 mb-12">
+          <div className="max-w-md mx-auto text-center">
+            <h4 className="text-lg font-medium text-background mb-2">
+              Bültenimize Abone Olun
+            </h4>
+            <p className="text-background/70 text-sm mb-6">
+              Yeni koleksiyonlar ve özel tekliflerden ilk siz haberdar olun.
+            </p>
+            <form onSubmit={handleNewsletterSubmit} className="flex gap-3">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="E-posta adresiniz"
+                className="flex-1 px-4 py-3 bg-background/10 border border-background/20 rounded-lg text-background placeholder-background/50 focus:outline-none focus:border-background/40 transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-6 py-3 bg-background text-foreground text-sm tracking-wide rounded-lg font-medium transition-all duration-500 hover:bg-background/90 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? '...' : 'Abone Ol'}
+              </button>
+            </form>
+            {submitStatus === 'success' && (
+              <p className="mt-3 text-sm text-green-400">Başarıyla abone oldunuz!</p>
+            )}
+            {submitStatus === 'error' && (
+              <p className="mt-3 text-sm text-red-400">Bir hata oluştu. Lütfen tekrar deneyin.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="border-t border-background/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-background/50">
+            © {new Date().getFullYear()} ÖzTelevi. Tüm hakları saklıdır.
+          </p>
+          <div className="flex items-center gap-6">
+            <a href="#" className="text-background/50 hover:text-background transition-colors duration-300">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+              </svg>
+            </a>
+            <a href="#" className="text-background/50 hover:text-background transition-colors duration-300">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+              </svg>
+            </a>
+            <a href="#" className="text-background/50 hover:text-background transition-colors duration-300">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-9.294h-3.128v-3.622h3.128v-2.671c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12v9.293h6.116c.73 0 1.323-.593 1.323-1.325v-21.35c0-.732-.593-1.325-1.325-1.325z"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  )
+}
