@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/components/providers";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { OrganizationJsonLd } from "@/components/JsonLd";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,24 +17,83 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ÖzTelevi - Ev Tekstili ve Perdeleri | Işığın Huzurla Buluştuğu Yer",
-  description: "Japon estetiğinin sade güzelliği ve İskandinav sadeliğinden ilham alan, el işçiliği tekstiller ve perdeler. Her parça, yaşam alanınıza huzur, doğal ışık ve zamansız bir zarafet davetiyesidir.",
-  keywords: ["ÖzTelevi", "perde", "ev tekstili", "keten", "organik pamuk", "Japandi", "İstanbul", "Türkiye"],
+  metadataBase: new URL("https://oztelevi.com"),
+  title: {
+    default: "ÖzTelevi - Ev Tekstili ve Perdeleri | Işığın Huzurla Buluştuğu Yer",
+    template: "%s | ÖzTelevi",
+  },
+  description: "Japon estetiğinin sade güzelliği ve İskandinav sadeliğinden ilham alan, el işçiliği tekstiller ve perdeler. Keten perdeler, organik pamuk tekstiller, yatak örtüleri ve özel tasarım çözümler. İstanbul'da mağazamızı ziyaret edin.",
+  keywords: [
+    "ÖzTelevi",
+    "perde",
+    "ev tekstili",
+    "keten perde",
+    "organik pamuk",
+    "Japandi",
+    "yatak örtüsü",
+    "tül perde",
+    "blackout perde",
+    "el dokuma",
+    "İstanbul perde",
+    "Türkiye ev tekstili",
+    "doğal kumaş",
+    "sürdürülebilir tekstil",
+  ],
   authors: [{ name: "ÖzTelevi" }],
+  creator: "ÖzTelevi",
+  publisher: "ÖzTelevi",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   icons: {
     icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
+  manifest: "/site.webmanifest",
   openGraph: {
-    title: "ÖzTelevi - Ev Tekstili ve Perdeleri",
-    description: "Işığın huzurla buluştuğu yer. Japon estetiği ve İskandinav sadeliğinden ilham alan el işçiliği tekstiller.",
+    type: "website",
+    locale: "tr_TR",
     url: "https://oztelevi.com",
     siteName: "ÖzTelevi",
-    type: "website",
+    title: "ÖzTelevi - Ev Tekstili ve Perdeleri | Işığın Huzurla Buluştuğu Yer",
+    description: "Japon estetiği ve İskandinav sadeliğinden ilham alan el işçiliği tekstiller ve perdeler. Her parça, yaşam alanınıza huzur davetidir.",
+    images: [
+      {
+        url: "/images/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "ÖzTelevi - Ev Tekstili ve Perdeleri",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "ÖzTelevi - Ev Tekstili ve Perdeleri",
-    description: "Işığın huzurla buluştuğu yer",
+    description: "Işığın huzurla buluştuğu yer. Japandi tasarım ev tekstilleri.",
+    images: ["/images/og-image.png"],
+    creator: "@oztelevi",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  verification: {
+    google: "google-site-verification-code",
+  },
+  alternates: {
+    canonical: "https://oztelevi.com",
+    languages: {
+      "tr-TR": "https://oztelevi.com",
+    },
   },
 };
 
@@ -48,6 +108,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <Providers>
+          <OrganizationJsonLd />
           {children}
           <Toaster />
           <WhatsAppButton />

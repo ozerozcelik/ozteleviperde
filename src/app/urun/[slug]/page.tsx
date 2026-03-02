@@ -7,6 +7,7 @@ import { OzTeleviLogo, OzTeleviLogoLight } from '@/components/OzTeleviLogo'
 import { useCart } from '@/contexts/CartContext'
 import { CartIcon } from '@/components/CartIcon'
 import { CartDrawer } from '@/components/CartDrawer'
+import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/JsonLd'
 
 // ============================================
 // Types & Interfaces
@@ -288,6 +289,25 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* SEO - JSON-LD Structured Data */}
+      <ProductJsonLd
+        name={displayProduct.name}
+        description={displayProduct.description}
+        image={displayProduct.image}
+        price={displayProduct.price}
+        currency={displayProduct.currency}
+        slug={displayProduct.slug}
+        inStock={displayProduct.inStock}
+        category={displayProduct.category}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Ana Sayfa', url: '/' },
+          { name: 'Koleksiyon', url: '/#koleksiyon' },
+          { name: displayProduct.name, url: `/urun/${displayProduct.slug}` },
+        ]}
+      />
+      
       {/* Navigation */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ${
