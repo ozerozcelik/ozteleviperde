@@ -19,7 +19,7 @@ export default function WhatsAppButton({
   const [isHovered, setIsHovered] = useState(false)
 
   // Format phone number for WhatsApp URL (remove + and spaces)
-  const formattedPhone = phoneNumber.replace(/[+\s]/g, '')
+  const formattedPhone = phoneNumber.replace(/\D/g, '')
   const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`
 
   return (

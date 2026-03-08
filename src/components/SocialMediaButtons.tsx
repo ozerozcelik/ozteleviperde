@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
 interface SocialMediaButtonsProps {
   variant?: 'default' | 'light'
@@ -150,25 +151,27 @@ export function SocialMediaButtons({
   showYouTube = false,
   className,
 }: SocialMediaButtonsProps) {
+  const { social } = useSiteSettings()
+
   const socialLinks: SocialLink[] = [
     {
       name: 'Instagram',
-      href: 'https://instagram.com/oztelevi',
+      href: social.instagram,
       icon: <InstagramIcon className="w-full h-full" />,
     },
     {
       name: 'Facebook',
-      href: 'https://facebook.com/oztelevi',
+      href: social.facebook,
       icon: <FacebookIcon className="w-full h-full" />,
     },
     {
       name: 'WhatsApp',
-      href: 'https://wa.me/905551234567',
+      href: social.whatsapp,
       icon: <WhatsAppIcon className="w-full h-full" />,
     },
     {
       name: 'Pinterest',
-      href: 'https://pinterest.com/oztelevi',
+      href: social.pinterest,
       icon: <PinterestIcon className="w-full h-full" />,
     },
   ]
@@ -176,7 +179,7 @@ export function SocialMediaButtons({
   if (showYouTube) {
     socialLinks.push({
       name: 'YouTube',
-      href: 'https://youtube.com/@oztelevi',
+      href: social.youtube,
       icon: <YouTubeIcon className="w-full h-full" />,
     })
   }

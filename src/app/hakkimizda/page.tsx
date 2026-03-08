@@ -7,6 +7,7 @@ import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import SocialMediaButtons from '@/components/SocialMediaButtons'
 import ManagedPage from '@/components/ManagedPage'
 import { usePageContent } from '@/hooks/usePageContent'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
 // ============================================
 // About Page - ÖzTelevi Hakkımızda
@@ -477,6 +478,7 @@ export default function AboutPage() {
 // Footer Component
 // ============================================
 function Footer() {
+  const { contact } = useSiteSettings()
   const [email, setEmail] = useState('')
   const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
@@ -547,16 +549,17 @@ function Footer() {
           <div>
             <h3 className="font-medium mb-4">İletişim</h3>
             <ul className="space-y-3 text-sm text-background/70">
-              <li>Teşvikiye Mah., Bağdar Caddesi No:42</li>
-              <li>Şişli, İstanbul</li>
+              {contact.addressLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
               <li className="pt-2">
-                <a href="tel:+902125550123" className="hover:text-background transition-colors">
-                  +90 (212) 555 0123
+                <a href={contact.phoneHref} className="hover:text-background transition-colors">
+                  {contact.phoneDisplay}
                 </a>
               </li>
               <li>
-                <a href="mailto:info@oztelevi.com" className="hover:text-background transition-colors">
-                  info@oztelevi.com
+                <a href={`mailto:${contact.email}`} className="hover:text-background transition-colors">
+                  {contact.email}
                 </a>
               </li>
             </ul>

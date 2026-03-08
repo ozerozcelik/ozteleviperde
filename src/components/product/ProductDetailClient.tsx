@@ -8,6 +8,7 @@ import { useCart } from '@/contexts/CartContext'
 import { CartIcon } from '@/components/CartIcon'
 import { CartDrawer } from '@/components/CartDrawer'
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/JsonLd'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
 export interface Product {
   id: string
@@ -143,6 +144,7 @@ export default function ProductDetailClient({
   initialProduct?: Product | null
   initialRelatedProducts?: Product[]
 }) {
+  const { contact } = useSiteSettings()
   const router = useRouter()
   const [selectedImage, setSelectedImage] = useState(0)
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
@@ -587,7 +589,7 @@ export default function ProductDetailClient({
                 {/* Phone CTA */}
                 <div className="mt-4">
                   <a
-                    href="tel:+902125550123"
+                    href={contact.phoneHref}
                     className="flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
                   >
                     <svg
@@ -599,7 +601,7 @@ export default function ProductDetailClient({
                     >
                       <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
-                    Hemen Arayın: +90 (212) 555 0123
+                    Hemen Arayın: {contact.phoneDisplay}
                   </a>
                 </div>
 
@@ -931,6 +933,7 @@ function QuoteRequestModal({
 // Footer Component
 // ============================================
 function Footer() {
+  const { contact } = useSiteSettings()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -1036,16 +1039,17 @@ function Footer() {
           <div>
             <h4 className="font-medium text-background mb-4">İletişim</h4>
             <ul className="space-y-3 text-sm text-background/70">
-              <li>Teşvikiye Mah., Bağdar Caddesi No:42</li>
-              <li>Şişli, İstanbul</li>
+              {contact.addressLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
               <li className="pt-2">
-                <a href="tel:+902125550123" className="hover:text-background transition-colors">
-                  +90 (212) 555 0123
+                <a href={contact.phoneHref} className="hover:text-background transition-colors">
+                  {contact.phoneDisplay}
                 </a>
               </li>
               <li>
-                <a href="mailto:info@oztelevi.com" className="hover:text-background transition-colors">
-                  info@oztelevi.com
+                <a href={`mailto:${contact.email}`} className="hover:text-background transition-colors">
+                  {contact.email}
                 </a>
               </li>
             </ul>

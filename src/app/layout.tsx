@@ -7,6 +7,7 @@ import WhatsAppButton from "@/components/WhatsAppButton";
 import { OrganizationJsonLd } from "@/components/JsonLd";
 import { Analytics } from "@/components/Analytics";
 import { SITE_URL } from "@/lib/site";
+import { getSiteSettings } from "@/lib/site-settings";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -98,21 +99,25 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const siteSettings = await getSiteSettings()
+
   return (
     <html lang="tr" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        <Providers>
-          <OrganizationJsonLd />
+        <Providers siteSettings={siteSettings}>
+          <OrganizationJsonLd siteSettings={siteSettings} />
           {children}
           <Toaster />
-          <WhatsAppButton />
+          <WhatsAppButton
+            phoneNumber={siteSettings.contact.phoneDisplay}
+          />
           <Analytics />
         </Providers>
       </body>

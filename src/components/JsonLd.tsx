@@ -2,37 +2,7 @@
 
 import Script from 'next/script'
 import { SITE_URL, toAbsoluteUrl } from '@/lib/site'
-
-// ============================================
-// Organization Schema
-// ============================================
-const organizationSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'Organization',
-  name: 'ÖzTelevi',
-  url: SITE_URL,
-  logo: toAbsoluteUrl('/images/logo.png'),
-  description: 'Japon estetiğinin sade güzelliği ve İskandinav sadeliğinden ilham alan, el işçiliği tekstiller ve perdeler.',
-  address: {
-    '@type': 'PostalAddress',
-    streetAddress: 'Teşvikiye Mah., Bağdar Caddesi No:42',
-    addressLocality: 'Şişli',
-    addressRegion: 'İstanbul',
-    postalCode: '34365',
-    addressCountry: 'TR',
-  },
-  contactPoint: {
-    '@type': 'ContactPoint',
-    telephone: '+90-212-555-0123',
-    contactType: 'customer service',
-    availableLanguage: 'Turkish',
-  },
-  sameAs: [
-    'https://instagram.com/oztelevi',
-    'https://pinterest.com/oztelevi',
-    'https://facebook.com/oztelevi',
-  ],
-}
+import type { SiteSettings } from '@/lib/site-settings'
 
 // ============================================
 // WebSite Schema
@@ -45,50 +15,80 @@ const websiteSchema = {
 }
 
 // ============================================
-// LocalBusiness Schema
-// ============================================
-const localBusinessSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'HomeGoodsStore',
-  name: 'ÖzTelevi',
-  image: toAbsoluteUrl('/images/hero.png'),
-  '@id': SITE_URL,
-  url: SITE_URL,
-  telephone: '+90-212-555-0123',
-  address: {
-    '@type': 'PostalAddress',
-    streetAddress: 'Teşvikiye Mah., Bağdar Caddesi No:42',
-    addressLocality: 'Şişli',
-    addressRegion: 'İstanbul',
-    postalCode: '34365',
-    addressCountry: 'TR',
-  },
-  geo: {
-    '@type': 'GeoCoordinates',
-    latitude: 41.0517,
-    longitude: 28.9833,
-  },
-  openingHoursSpecification: [
-    {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-      opens: '09:00',
-      closes: '18:00',
-    },
-    {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: 'Saturday',
-      opens: '10:00',
-      closes: '16:00',
-    },
-  ],
-  priceRange: '$$',
-}
-
-// ============================================
 // Main Component - Organization & Website Schema
 // ============================================
-export function OrganizationJsonLd() {
+export function OrganizationJsonLd({
+  siteSettings,
+}: {
+  siteSettings: SiteSettings
+}) {
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'ÖzTelevi',
+    url: SITE_URL,
+    logo: toAbsoluteUrl('/images/logo.png'),
+    description: 'Japon estetiğinin sade güzelliği ve İskandinav sadeliğinden ilham alan, el işçiliği tekstiller ve perdeler.',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: siteSettings.contact.addressLines[0] || siteSettings.contact.address,
+      addressLocality: 'Şişli',
+      addressRegion: 'İstanbul',
+      postalCode: '34365',
+      addressCountry: 'TR',
+    },
+    contactPoint: {
+      '@type': 'ContactPoint',
+      telephone: siteSettings.contact.phoneDisplay,
+      contactType: siteSettings.structuredData.contactType,
+      availableLanguage: 'Turkish',
+      email: siteSettings.contact.email,
+    },
+    sameAs: [
+      siteSettings.social.instagram,
+      siteSettings.social.pinterest,
+      siteSettings.social.facebook,
+    ],
+  }
+
+  const localBusinessSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'HomeGoodsStore',
+    name: 'ÖzTelevi',
+    image: toAbsoluteUrl('/images/hero.png'),
+    '@id': SITE_URL,
+    url: SITE_URL,
+    telephone: siteSettings.contact.phoneDisplay,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: siteSettings.contact.addressLines[0] || siteSettings.contact.address,
+      addressLocality: 'Şişli',
+      addressRegion: 'İstanbul',
+      postalCode: '34365',
+      addressCountry: 'TR',
+    },
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: 41.0517,
+      longitude: 28.9833,
+    },
+    openingHoursSpecification: [
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        opens: siteSettings.structuredData.openingHours.weekdays.opens,
+        closes: siteSettings.structuredData.openingHours.weekdays.closes,
+      },
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: 'Saturday',
+        opens: siteSettings.structuredData.openingHours.saturday.opens,
+        closes: siteSettings.structuredData.openingHours.saturday.closes,
+      },
+    ],
+    priceRange: siteSettings.structuredData.priceRange,
+  }
+
   return (
     <>
       <Script
