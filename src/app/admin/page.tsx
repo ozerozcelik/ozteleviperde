@@ -303,7 +303,8 @@ function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) 
       return {
         ...baselineSection,
         ...matchedSection,
-        key: matchedSection?.key || baselineSection.key,
+        key: baselineSection.key,
+        type: baselineSection.type,
         items: resolvedItems,
       }
     })
