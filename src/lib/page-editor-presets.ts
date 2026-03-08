@@ -112,6 +112,11 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         title: 'Huzur mekanınızı yaratın',
         content:
           'Keten, dokuma ve özel ölçü perde çözümleri için bizimle iletişime geçin.',
+        items: [
+          'info@oztelevi.com',
+          '+90 (212) 555 0123',
+          'Teşvikiye Mah., Bağdar Caddesi No:42, Şişli, İstanbul',
+        ],
         link: '#iletisim',
         linkText: 'Yolculuğunuza Başlayın',
       },

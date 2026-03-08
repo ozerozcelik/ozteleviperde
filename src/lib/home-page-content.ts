@@ -74,6 +74,11 @@ export type HomePageContent = {
     eyebrow: string
     title: string
     description: string
+    details: {
+      email: string
+      phone: string
+      address: string
+    }
   }
 }
 
@@ -193,6 +198,16 @@ function parseFeatureItems(items: string[] | undefined, fallback: ContentPair[])
     .filter((item) => item.title.length > 0 && item.description.length > 0)
 
   return parsed.length > 0 ? parsed : fallback
+}
+
+function parseContactDetails(items: string[] | undefined, fallback: [string, string, string]) {
+  const [fallbackEmail, fallbackPhone, fallbackAddress] = fallback
+
+  return {
+    email: normalizeText(items?.[0], fallbackEmail),
+    phone: normalizeText(items?.[1], fallbackPhone),
+    address: normalizeText(items?.[2], fallbackAddress),
+  }
 }
 
 export async function getHomePageContent(): Promise<HomePageContent> {
@@ -330,6 +345,11 @@ export async function getHomePageContent(): Promise<HomePageContent> {
       eyebrow: normalizeText(contactSection.linkText, baselineSections[6].linkText || 'Yolculuğunuza Başlayın'),
       title: normalizeText(contactSection.title, baselineSections[6].title || ''),
       description: normalizeText(contactSection.content, baselineSections[6].content || ''),
+      details: parseContactDetails(contactSection.items, [
+        'info@oztelevi.com',
+        '+90 (212) 555 0123',
+        'Teşvikiye Mah., Bağdar Caddesi No:42, Şişli, İstanbul',
+      ]),
     },
   }
 }

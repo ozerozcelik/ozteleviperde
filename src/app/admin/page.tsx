@@ -2488,6 +2488,28 @@ export default function AdminPage() {
                                     }}
                                   />
                                 </div>
+                                {section.key === 'contact-cta' && (
+                                  <div className="mt-3 space-y-2">
+                                    <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
+                                      İletişim Bilgileri
+                                    </p>
+                                    {['E-posta', 'Telefon', 'Adres'].map((label, detailIndex) => (
+                                      <Input
+                                        key={label}
+                                        placeholder={label}
+                                        value={section.items?.[detailIndex] || ''}
+                                        onChange={(e) => {
+                                          const newSections = [...pageSections]
+                                          if (!newSections[index].items) {
+                                            newSections[index].items = ['', '', '']
+                                          }
+                                          newSections[index].items![detailIndex] = e.target.value
+                                          setSectionsWithHistory(newSections)
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
                               </>
                             )}
 
