@@ -71,6 +71,15 @@ function normalizeText(value: string | null | undefined, fallback: string) {
   return trimmed ? trimmed : fallback
 }
 
+function normalizeTeamDescription(value: string | null | undefined, fallback: string) {
+  const trimmed = value?.trim()
+
+  if (!trimmed) return fallback
+  if (trimmed.toLowerCase().includes('her satir su formatta olmali')) return fallback
+
+  return trimmed
+}
+
 function parseFeatureItems(items: string[] | undefined, fallback: ContentPair[]) {
   const parsed = (items || [])
     .map((item, index) => {
@@ -196,6 +205,7 @@ export default function AboutPage() {
     'İlk atölyemiz, İstanbul’un kalbinde, Teşvikiye’de küçük bir bodrum katında açıldı. El dokuması perdelerimiz ve organik tekstillerimiz, kısa sürede sadelik ve kalite arayan müşterilerimizin beğenisini kazandı.',
     'Bugün, üç kuşaktır süren zanaat geleneğimizi modern tasarım anlayışıyla birleştirerek, Türkiye’nin önde gelen ev tekstili markalarından biri olarak yolculuğumuza devam ediyoruz.',
   ])
+  const storyImage = sanitizeImageUrl(storySection?.image) || '/images/scene-bedroom.png'
 
   const missionVision = parseFeatureItems(missionVisionSection?.items, [
     {
@@ -459,7 +469,7 @@ export default function AboutPage() {
               {/* Image */}
               <div className="relative aspect-[4/5] rounded-2xl overflow-hidden">
                 <Image
-                  src="/images/scene-bedroom.png"
+                  src={storyImage}
                   alt="ÖzTelevi atölyesi"
                   fill
                   className="object-cover"
@@ -554,7 +564,7 @@ export default function AboutPage() {
                 {normalizeText(teamSection?.title, 'Tutkulu insanlar')}
               </h2>
               <p className="text-muted-foreground leading-relaxed">
-                {normalizeText(
+                {normalizeTeamDescription(
                   teamSection?.content,
                   'Her biri alanında uzman, zanaata ve kaliteye adamış ekibimizle tanışın.'
                 )}

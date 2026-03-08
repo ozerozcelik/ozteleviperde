@@ -116,7 +116,7 @@ export default async function RootLayout({
           {children}
           <Toaster />
           <WhatsAppButton
-            phoneNumber={siteSettings.contact.phoneDisplay}
+            phoneNumber={siteSettings.contact.whatsappPhone}
           />
           <Analytics />
         </Providers>

@@ -299,6 +299,7 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         title: 'Bir tutku hikayesi',
         content:
           'ÖzTelevi, 1998 yılında Ayşe Özdemir’in tekstil sanatına olan tutkusundan doğdu. Wabi-sabi felsefesi ile İskandinav minimalizmini birleştirerek küçük bir atölyeden Türkiye’nin önde gelen ev tekstili markalarından birine dönüştü.',
+        image: '/images/scene-bedroom.png',
         items: [
           'İlk atölyemiz, İstanbul’un kalbinde, Teşvikiye’de küçük bir bodrum katında açıldı. El dokuması perdelerimiz ve organik tekstillerimiz, kısa sürede sadelik ve kalite arayan müşterilerimizin beğenisini kazandı.',
           'Bugün, üç kuşaktır süren zanaat geleneğimizi modern tasarım anlayışıyla birleştirerek, Türkiye’nin önde gelen ev tekstili markalarından biri olarak yolculuğumuza devam ediyoruz.',
@@ -330,7 +331,7 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         key: 'about-team',
         type: 'features',
         title: 'Ekibimiz',
-        content: 'Her satir su formatta olmali: Isim | Rol | Kisa Biyografi | Gorsel URL',
+        content: 'Her biri alanında uzman, zanaata ve kaliteye adamış ekibimizle tanışın.',
         items: [
           'Ayşe Özdemir | Kurucu & Kreatif Direktör | 20 yılı aşkın tekstil deneyimiyle Japandi felsefesini Türkiye’ye taşıyor. | /images/hero.png',
           'Mehmet Kaya | Üretim Direktörü | El dokuma tekniklerinde uzman, sürdürülebilir üretimin mimarı. | /images/product-curtain.png',

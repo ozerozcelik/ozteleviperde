@@ -48,6 +48,7 @@ export default function BlogDetailClient({
   initialBlog: BlogPost | null
   initialRelatedPosts?: RelatedPost[]
 }) {
+  const { contact } = useSiteSettings()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [blog, setBlog] = useState<BlogPost | null>(initialBlog)
@@ -156,7 +157,7 @@ export default function BlogDetailClient({
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
       twitter: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
       linkedin: `https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedTitle}`,
-      whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`,
+      whatsapp: `https://wa.me/${contact.whatsappPhone}?text=${encodedTitle}%20${encodedUrl}`,
       pinterest: `https://pinterest.com/pin/create/button/?url=${encodedUrl}&description=${encodedTitle}`,
     }
 

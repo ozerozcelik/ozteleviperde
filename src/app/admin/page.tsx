@@ -226,6 +226,46 @@ function formatFeatureItem(title: string, description: string) {
   return `${normalizedTitle} - ${normalizedDescription}`
 }
 
+function parseTeamMemberItem(item: string | undefined) {
+  const [name, role, bio, image] = (item || '').split('|').map((part) => part.trim())
+
+  return {
+    name: name || '',
+    role: role || '',
+    bio: bio || '',
+    image: image || '',
+  }
+}
+
+function formatTeamMemberItem(name: string, role: string, bio: string, image: string) {
+  const parts = [name.trim(), role.trim(), bio.trim(), image.trim()]
+
+  while (parts.length > 0 && !parts[parts.length - 1]) {
+    parts.pop()
+  }
+
+  return parts.join(' | ')
+}
+
+function parseQuoteContent(value: string | undefined) {
+  const [author, role] = (value || '').split('|').map((part) => part.trim())
+
+  return {
+    author: author || '',
+    role: role || '',
+  }
+}
+
+function formatQuoteContent(author: string, role: string) {
+  const normalizedAuthor = author.trim()
+  const normalizedRole = role.trim()
+
+  if (!normalizedAuthor) return normalizedRole
+  if (!normalizedRole) return normalizedAuthor
+
+  return `${normalizedAuthor} | ${normalizedRole}`
+}
+
 function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) {
   const currentSections = parsePageSections(page.sections)
 
@@ -253,10 +293,18 @@ function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) 
         matchedIdentities.add(baselineIdentity)
       }
 
+      const resolvedItems =
+        Array.isArray(matchedSection?.items) && matchedSection.items.length > 0
+          ? [...matchedSection.items]
+          : Array.isArray(baselineSection.items)
+            ? [...baselineSection.items]
+            : undefined
+
       return {
         ...baselineSection,
         ...matchedSection,
         key: matchedSection?.key || baselineSection.key,
+        items: resolvedItems,
       }
     })
 
@@ -2530,46 +2578,132 @@ export default function AdminPage() {
 
                             {section.type === 'cta' && (
                               <>
-                                <Input
-                                  className="mb-2"
-                                  placeholder="Başlık"
-                                  value={section.title || ''}
-                                  onChange={(e) => {
-                                    const newSections = [...pageSections]
-                                    newSections[index].title = e.target.value
-                                    setSectionsWithHistory(newSections)
-                                  }}
-                                />
-                                <Input
-                                  className="mb-2"
-                                  placeholder="Açıklama"
-                                  value={section.content || ''}
-                                  onChange={(e) => {
-                                    const newSections = [...pageSections]
-                                    newSections[index].content = e.target.value
-                                    setSectionsWithHistory(newSections)
-                                  }}
-                                />
-                                <div className="grid grid-cols-2 gap-2">
-                                  <Input
-                                    placeholder="Buton metni"
-                                    value={section.linkText || ''}
-                                    onChange={(e) => {
-                                      const newSections = [...pageSections]
-                                      newSections[index].linkText = e.target.value
-                                      setSectionsWithHistory(newSections)
-                                    }}
-                                  />
-                                  <Input
-                                    placeholder="Link (/iletisim)"
-                                    value={section.link || ''}
-                                    onChange={(e) => {
-                                      const newSections = [...pageSections]
-                                      newSections[index].link = e.target.value
-                                      setSectionsWithHistory(newSections)
-                                    }}
-                                  />
-                                </div>
+                                {section.key === 'about-quote' ? (
+                                  <div className="space-y-3">
+                                    <Textarea
+                                      rows={4}
+                                      placeholder="Alıntı metni"
+                                      value={section.title || ''}
+                                      onChange={(e) => {
+                                        const newSections = [...pageSections]
+                                        newSections[index].title = e.target.value
+                                        setSectionsWithHistory(newSections)
+                                      }}
+                                    />
+                                    {(() => {
+                                      const quote = parseQuoteContent(section.content)
+
+                                      return (
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                          <Input
+                                            placeholder="Yazar"
+                                            value={quote.author}
+                                            onChange={(e) => {
+                                              const newSections = [...pageSections]
+                                              const currentQuote = parseQuoteContent(newSections[index].content)
+                                              newSections[index].content = formatQuoteContent(e.target.value, currentQuote.role)
+                                              setSectionsWithHistory(newSections)
+                                            }}
+                                          />
+                                          <Input
+                                            placeholder="Rol"
+                                            value={quote.role}
+                                            onChange={(e) => {
+                                              const newSections = [...pageSections]
+                                              const currentQuote = parseQuoteContent(newSections[index].content)
+                                              newSections[index].content = formatQuoteContent(currentQuote.author, e.target.value)
+                                              setSectionsWithHistory(newSections)
+                                            }}
+                                          />
+                                        </div>
+                                      )
+                                    })()}
+                                    <div className="flex gap-2">
+                                      <Input
+                                        placeholder="Görsel URL"
+                                        value={section.image || ''}
+                                        onChange={(e) => {
+                                          const newSections = [...pageSections]
+                                          newSections[index].image = e.target.value
+                                          setSectionsWithHistory(newSections)
+                                        }}
+                                      />
+                                      <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded flex items-center">
+                                        <Upload className="w-4 h-4" />
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={async (e) => {
+                                            const file = e.target.files?.[0]
+                                            if (!file) return
+                                            setIsUploading(true)
+                                            try {
+                                              const uploadedUrl = await uploadMediaAsset(file, {
+                                                folder: `oztelevi/pages/${selectedPageSlug}`,
+                                                tags: ['page', selectedPageSlug, 'about-quote-image'],
+                                              })
+                                              const newSections = [...pageSections]
+                                              newSections[index].image = uploadedUrl
+                                              setSectionsWithHistory(newSections)
+                                            } catch (error) {
+                                              alert(error instanceof Error ? error.message : 'Yukleme hatasi')
+                                            } finally {
+                                              setIsUploading(false)
+                                            }
+                                          }}
+                                          disabled={isUploading}
+                                        />
+                                      </label>
+                                    </div>
+                                    {section.image && (
+                                      <img src={section.image} alt="Alıntı görseli" className="w-32 h-32 object-cover rounded" />
+                                    )}
+                                  </div>
+                                ) : (
+                                  <>
+                                    <Input
+                                      className="mb-2"
+                                      placeholder="Başlık"
+                                      value={section.title || ''}
+                                      onChange={(e) => {
+                                        const newSections = [...pageSections]
+                                        newSections[index].title = e.target.value
+                                        setSectionsWithHistory(newSections)
+                                      }}
+                                    />
+                                    <Input
+                                      className="mb-2"
+                                      placeholder="Açıklama"
+                                      value={section.content || ''}
+                                      onChange={(e) => {
+                                        const newSections = [...pageSections]
+                                        newSections[index].content = e.target.value
+                                        setSectionsWithHistory(newSections)
+                                      }}
+                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <Input
+                                        placeholder="Buton metni"
+                                        value={section.linkText || ''}
+                                        onChange={(e) => {
+                                          const newSections = [...pageSections]
+                                          newSections[index].linkText = e.target.value
+                                          setSectionsWithHistory(newSections)
+                                        }}
+                                      />
+                                      <Input
+                                        placeholder="Link (/iletisim)"
+                                        value={section.link || ''}
+                                        onChange={(e) => {
+                                          const newSections = [...pageSections]
+                                          newSections[index].link = e.target.value
+                                          setSectionsWithHistory(newSections)
+                                        }}
+                                      />
+                                    </div>
+                                  </>
+                                )}
                                 {section.key === 'contact-cta' && (
                                   <div className="mt-3 space-y-2">
                                     <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
@@ -2620,7 +2754,48 @@ export default function AdminPage() {
                                 />
                                 {section.key === 'about-story' ? (
                                   <div className="space-y-3">
-                                    {(section.items || ['', '']).map((item: string, i: number) => (
+                                    <div className="flex gap-2">
+                                      <Input
+                                        placeholder="Hikaye görseli URL"
+                                        value={section.image || ''}
+                                        onChange={(e) => {
+                                          const newSections = [...pageSections]
+                                          newSections[index].image = e.target.value
+                                          setSectionsWithHistory(newSections)
+                                        }}
+                                      />
+                                      <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded flex items-center">
+                                        <Upload className="w-4 h-4" />
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={async (e) => {
+                                            const file = e.target.files?.[0]
+                                            if (!file) return
+                                            setIsUploading(true)
+                                            try {
+                                              const uploadedUrl = await uploadMediaAsset(file, {
+                                                folder: `oztelevi/pages/${selectedPageSlug}`,
+                                                tags: ['page', selectedPageSlug, 'about-story-image'],
+                                              })
+                                              const newSections = [...pageSections]
+                                              newSections[index].image = uploadedUrl
+                                              setSectionsWithHistory(newSections)
+                                            } catch (error) {
+                                              alert(error instanceof Error ? error.message : 'Yukleme hatasi')
+                                            } finally {
+                                              setIsUploading(false)
+                                            }
+                                          }}
+                                          disabled={isUploading}
+                                        />
+                                      </label>
+                                    </div>
+                                    {section.image && (
+                                      <img src={section.image} alt="Hikaye görseli" className="w-32 h-32 object-cover rounded" />
+                                    )}
+                                    {(section.items && section.items.length > 0 ? section.items : ['', '']).map((item: string, i: number) => (
                                       <div key={i} className="space-y-2">
                                         <Label>{`Paragraf ${i + 2}`}</Label>
                                         <Textarea
@@ -2647,6 +2822,153 @@ export default function AdminPage() {
                                       }}
                                     >
                                       + Paragraf Ekle
+                                    </Button>
+                                  </div>
+                                ) : section.key === 'about-team' ? (
+                                  <div className="space-y-4">
+                                    {(section.items && section.items.length > 0 ? section.items : ['']).map((item: string, i: number) => {
+                                      const member = parseTeamMemberItem(item)
+
+                                      return (
+                                        <div key={i} className="rounded-xl border border-stone-200 p-4 space-y-3">
+                                          <div className="flex items-center justify-between gap-3">
+                                            <Label>{`Ekip Üyesi ${i + 1}`}</Label>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => {
+                                                const newSections = [...pageSections]
+                                                newSections[index].items = (newSections[index].items || []).filter((_: any, xi: number) => xi !== i)
+                                                setSectionsWithHistory(newSections)
+                                              }}
+                                            >
+                                              Kaldır
+                                            </Button>
+                                          </div>
+                                          <div className="grid gap-3 md:grid-cols-2">
+                                            <Input
+                                              placeholder="İsim"
+                                              value={member.name}
+                                              onChange={(e) => {
+                                                const newSections = [...pageSections]
+                                                const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
+                                                const nextItems = [...(newSections[index].items || [])]
+                                                nextItems[i] = formatTeamMemberItem(
+                                                  e.target.value,
+                                                  currentMember.role,
+                                                  currentMember.bio,
+                                                  currentMember.image
+                                                )
+                                                newSections[index].items = nextItems
+                                                setSectionsWithHistory(newSections)
+                                              }}
+                                            />
+                                            <Input
+                                              placeholder="Görev / Unvan"
+                                              value={member.role}
+                                              onChange={(e) => {
+                                                const newSections = [...pageSections]
+                                                const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
+                                                const nextItems = [...(newSections[index].items || [])]
+                                                nextItems[i] = formatTeamMemberItem(
+                                                  currentMember.name,
+                                                  e.target.value,
+                                                  currentMember.bio,
+                                                  currentMember.image
+                                                )
+                                                newSections[index].items = nextItems
+                                                setSectionsWithHistory(newSections)
+                                              }}
+                                            />
+                                          </div>
+                                          <Textarea
+                                            rows={3}
+                                            placeholder="Kısa açıklama"
+                                            value={member.bio}
+                                            onChange={(e) => {
+                                              const newSections = [...pageSections]
+                                              const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
+                                              const nextItems = [...(newSections[index].items || [])]
+                                              nextItems[i] = formatTeamMemberItem(
+                                                currentMember.name,
+                                                currentMember.role,
+                                                e.target.value,
+                                                currentMember.image
+                                              )
+                                              newSections[index].items = nextItems
+                                              setSectionsWithHistory(newSections)
+                                            }}
+                                          />
+                                          <div className="flex gap-2">
+                                            <Input
+                                              placeholder="Görsel URL"
+                                              value={member.image}
+                                              onChange={(e) => {
+                                                const newSections = [...pageSections]
+                                                const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
+                                                const nextItems = [...(newSections[index].items || [])]
+                                                nextItems[i] = formatTeamMemberItem(
+                                                  currentMember.name,
+                                                  currentMember.role,
+                                                  currentMember.bio,
+                                                  e.target.value
+                                                )
+                                                newSections[index].items = nextItems
+                                                setSectionsWithHistory(newSections)
+                                              }}
+                                            />
+                                            <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded flex items-center">
+                                              <Upload className="w-4 h-4" />
+                                              <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={async (e) => {
+                                                  const file = e.target.files?.[0]
+                                                  if (!file) return
+                                                  setIsUploading(true)
+                                                  try {
+                                                    const uploadedUrl = await uploadMediaAsset(file, {
+                                                      folder: `oztelevi/pages/${selectedPageSlug}`,
+                                                      tags: ['page', selectedPageSlug, 'about-team-member'],
+                                                    })
+                                                    const newSections = [...pageSections]
+                                                    const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
+                                                    const nextItems = [...(newSections[index].items || [])]
+                                                    nextItems[i] = formatTeamMemberItem(
+                                                      currentMember.name,
+                                                      currentMember.role,
+                                                      currentMember.bio,
+                                                      uploadedUrl
+                                                    )
+                                                    newSections[index].items = nextItems
+                                                    setSectionsWithHistory(newSections)
+                                                  } catch (error) {
+                                                    alert(error instanceof Error ? error.message : 'Yukleme hatasi')
+                                                  } finally {
+                                                    setIsUploading(false)
+                                                  }
+                                                }}
+                                                disabled={isUploading}
+                                              />
+                                            </label>
+                                          </div>
+                                          {member.image && (
+                                            <img src={member.image} alt={member.name || `Ekip üyesi ${i + 1}`} className="w-24 h-24 object-cover rounded-xl" />
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const newSections = [...pageSections]
+                                        newSections[index].items = [...(newSections[index].items || []), '']
+                                        setSectionsWithHistory(newSections)
+                                      }}
+                                    >
+                                      + Ekip Üyesi Ekle
                                     </Button>
                                   </div>
                                 ) : section.key === 'about-mission-vision' ? (

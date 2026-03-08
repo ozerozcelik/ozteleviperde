@@ -39,6 +39,8 @@ const DEFAULT_CONTACT = {
   address: 'Teşvikiye Mah., Bağdar Caddesi No:42, Şişli, İstanbul',
 }
 
+const DEFAULT_WHATSAPP_PHONE = '905078154901'
+
 const DEFAULT_SOCIAL = {
   instagram: 'https://instagram.com/oztelevi',
   facebook: 'https://facebook.com/oztelevi',
@@ -140,7 +142,7 @@ export const getSiteSettings = cache(async (): Promise<SiteSettings> => {
   const email = contactSettings.get('e-posta') || contactItems[0]?.trim() || DEFAULT_CONTACT.email
   const phoneDisplay = contactSettings.get('telefon') || contactItems[1]?.trim() || DEFAULT_CONTACT.phoneDisplay
   const address = contactSettings.get('adres') || contactItems[2]?.trim() || DEFAULT_CONTACT.address
-  const whatsappPhone = toWhatsAppPhone(phoneDisplay)
+  const whatsappPhone = DEFAULT_WHATSAPP_PHONE
 
   return {
     contact: {
