@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 import { db } from '@/lib/db'
+import authOptions from '@/lib/auth-options'
+import { enforceTrustedOrigin } from '@/lib/request-security'
 
 // Favorileri listele
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const guestId = searchParams.get('guestId')
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id
 
-    // Kullanıcı girişi yoksa guest ID ile favorileri getir
+    if (!userId) {
+      return NextResponse.json({ success: true, data: [] })
+    }
+
     const favorites = await db.favorite.findMany({
-      where: userId ? { userId } : { userId: guestId || 'guest' },
+      where: { userId },
       include: {
         product: {
           select: {
@@ -51,8 +56,21 @@ export async function GET(request: NextRequest) {
 // Favorilere ekle
 export async function POST(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Favori işlemi için giriş yapmanız gerekiyor.', success: false },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
-    const { userId, productId, guestId } = body
+    const { productId } = body
 
     if (!productId) {
       return NextResponse.json(
@@ -61,12 +79,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const effectiveUserId = userId || guestId || 'guest'
-
     // Zaten favorilerde mi kontrol et
     const existing = await db.favorite.findFirst({
       where: {
-        userId: effectiveUserId,
+        userId,
         productId,
       },
     })
@@ -83,7 +99,7 @@ export async function POST(request: NextRequest) {
     // Favoriye ekle
     const favorite = await db.favorite.create({
       data: {
-        userId: effectiveUserId,
+        userId,
         productId,
       },
       include: {
@@ -116,15 +132,27 @@ export async function POST(request: NextRequest) {
 // Favorilerden çıkar
 export async function DELETE(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Favori işlemi için giriş yapmanız gerekiyor.', success: false },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
     const productId = searchParams.get('productId')
     const favoriteId = searchParams.get('id')
 
     if (favoriteId) {
       // ID ile sil
-      await db.favorite.delete({
-        where: { id: favoriteId },
+      await db.favorite.deleteMany({
+        where: { id: favoriteId, userId },
       })
     } else if (userId && productId) {
       // Kullanıcı ve ürün ID ile sil

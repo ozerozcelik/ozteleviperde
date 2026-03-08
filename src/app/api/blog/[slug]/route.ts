@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
+function parseStringArray(value: string | null): string[] {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 // Tek blog yazısı getir (slug ile)
 export async function GET(
   request: NextRequest,
@@ -29,7 +39,7 @@ export async function GET(
     // JSON alanlarını parse et
     const parsedBlog = {
       ...blog,
-      tags: blog.tags ? JSON.parse(blog.tags) : [],
+      tags: parseStringArray(blog.tags),
       viewCount: blog.viewCount + 1, // Güncellenmiş sayıyı döndür
     }
 

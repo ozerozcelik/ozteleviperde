@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/api-auth'
+import { enforceRateLimit, enforceTrustedOrigin } from '@/lib/request-security'
 
 // Bülten aboneliği
 export async function POST(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
+    const rateLimitError = await enforceRateLimit(request, {
+      key: 'newsletter-subscribe',
+      limit: 8,
+      windowMs: 10 * 60 * 1000,
+    })
+    if (rateLimitError) return rateLimitError
+
     const body = await request.json()
     const { email, name, source } = body
+    const normalizedEmail =
+      typeof email === 'string' ? email.toLowerCase().trim() : ''
 
     // Validasyon
-    if (!email) {
+    if (!normalizedEmail) {
       return NextResponse.json(
         { error: 'E-posta adresi zorunludur.' },
         { status: 400 }
@@ -17,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     // E-posta formatı kontrolü
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       return NextResponse.json(
         { error: 'Geçerli bir e-posta adresi giriniz.' },
         { status: 400 }
@@ -26,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Zaten abone mi kontrol et
     const existing = await db.newsletter.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     })
 
     if (existing) {
@@ -38,7 +52,7 @@ export async function POST(request: NextRequest) {
       } else {
         // Yeniden aktifleştir
         await db.newsletter.update({
-          where: { email },
+          where: { email: normalizedEmail },
           data: { active: true, name: name || existing.name },
         })
         return NextResponse.json({
@@ -51,7 +65,7 @@ export async function POST(request: NextRequest) {
     // Yeni abone kaydet
     const newsletter = await db.newsletter.create({
       data: {
-        email,
+        email: normalizedEmail,
         name: name || null,
         source: source || null,
       },
@@ -74,8 +88,11 @@ export async function POST(request: NextRequest) {
 // Abonelikten çık
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(request.url)
-    const email = searchParams.get('email')
+    const email = searchParams.get('email')?.toLowerCase().trim()
 
     if (!email) {
       return NextResponse.json(
@@ -91,7 +108,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Bülten aboneliğiniz iptal edildi.',
+      message: 'Bülten aboneliği iptal edildi.',
     })
   } catch (error) {
     console.error('Newsletter unsubscribe error:', error)
@@ -105,6 +122,9 @@ export async function DELETE(request: NextRequest) {
 // Aboneleri listele (admin için)
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(request.url)
     const active = searchParams.get('active')
     const limit = parseInt(searchParams.get('limit') || '100')

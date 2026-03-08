@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { db } from '@/lib/db'
 import { hashPassword, isValidEmail, validatePassword } from '@/lib/auth'
-
-// Use PrismaClient directly to avoid caching issues
-const prisma = new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'],
-})
-
-// Debug: Log available models
-console.log('Prisma client models:', Object.keys(prisma).filter(k => !k.startsWith('_') && !k.startsWith('$')))
+import { enforceRateLimit, enforceTrustedOrigin } from '@/lib/request-security'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('prisma.user exists:', !!prisma.user)
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
+    const rateLimitError = await enforceRateLimit(request, {
+      key: 'register',
+      limit: 5,
+      windowMs: 15 * 60 * 1000,
+    })
+    if (rateLimitError) return rateLimitError
+
     const body = await request.json()
     const { email, password, name } = body
 
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = email.toLowerCase().trim()
 
     // Kullanıcı zaten var mı kontrol et
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await db.user.findUnique({
       where: { email: normalizedEmail },
     })
 
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password)
 
     // Kullanıcı oluştur
-    const user = await prisma.user.create({
+    const user = await db.user.create({
       data: {
         email: normalizedEmail,
         password: hashedPassword,
@@ -87,49 +89,6 @@ export async function POST(request: NextRequest) {
     console.error('Kayıt hatası:', error)
     return NextResponse.json(
       { error: 'Kayıt sırasında bir hata oluştu' },
-      { status: 500 }
-    )
-  }
-}
-
-// Kullanıcı bilgisi kontrolü
-export async function GET(request: NextRequest) {
-  try {
-    const email = request.nextUrl.searchParams.get('email')
-
-    if (!email) {
-      return NextResponse.json(
-        { error: 'E-posta parametresi gereklidir' },
-        { status: 400 }
-      )
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        createdAt: true,
-      },
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { exists: false },
-        { status: 200 }
-      )
-    }
-
-    return NextResponse.json(
-      { exists: true, user },
-      { status: 200 }
-    )
-  } catch (error) {
-    console.error('Kullanıcı sorgulama hatası:', error)
-    return NextResponse.json(
-      { error: 'Sorgulama sırasında bir hata oluştu' },
       { status: 500 }
     )
   }

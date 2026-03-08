@@ -1,7 +1,10 @@
+import Link from 'next/link'
+
 interface LogoProps {
   className?: string
   showText?: boolean
   size?: 'sm' | 'md' | 'lg'
+  variant?: 'light' | 'dark'
 }
 
 export function OzTeleviLogo({ className = '', showText = true, size = 'md' }: LogoProps) {
@@ -12,7 +15,7 @@ export function OzTeleviLogo({ className = '', showText = true, size = 'md' }: L
   }
 
   return (
-    <a href="#" className={`flex items-center gap-3 group ${className}`}>
+    <Link href="/" className={`flex items-center gap-3 group ${className}`}>
       {/* Logo Icon */}
       <div className={`${sizes[size].icon} relative flex items-center justify-center`}>
         <svg
@@ -76,7 +79,7 @@ export function OzTeleviLogo({ className = '', showText = true, size = 'md' }: L
           ÖzTelevi
         </span>
       )}
-    </a>
+    </Link>
   )
 }
 
@@ -89,7 +92,7 @@ export function OzTeleviLogoLight({ className = '', showText = true, size = 'md'
   }
 
   return (
-    <a href="#" className={`flex items-center gap-3 group ${className}`}>
+    <Link href="/" className={`flex items-center gap-3 group ${className}`}>
       <div className={`${sizes[size].icon} relative flex items-center justify-center`}>
         <svg
           viewBox="0 0 48 48"
@@ -151,6 +154,6 @@ export function OzTeleviLogoLight({ className = '', showText = true, size = 'md'
           ÖzTelevi
         </span>
       )}
-    </a>
+    </Link>
   )
 }

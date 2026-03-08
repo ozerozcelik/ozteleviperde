@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { OzTeleviLogo } from '@/components/OzTeleviLogo'
+import ManagedPage from '@/components/ManagedPage'
+import { usePageContent } from '@/hooks/usePageContent'
 
 // ============================================
 // Types
@@ -97,6 +99,8 @@ const curtainColors: CurtainColor[] = [
 // Component
 // ============================================
 export default function VisualizerPage() {
+  const { content: managedPage } = usePageContent('visualizer')
+
   const [selectedRoom, setSelectedRoom] = useState<Room>(rooms[0])
   const [selectedStyle, setSelectedStyle] = useState<CurtainStyle>(curtainStyles[0])
   const [selectedColor, setSelectedColor] = useState<CurtainColor>(curtainColors[0])
@@ -127,6 +131,19 @@ export default function VisualizerPage() {
     setSavedImage('saved')
     setTimeout(() => setSavedImage(null), 3000)
     setIsSaving(false)
+  }
+
+  if (managedPage?.htmlContent || managedPage?.heroTitle) {
+    return <ManagedPage 
+      html={managedPage.htmlContent} 
+      schemaJson={managedPage.schemaJson}
+      heroTitle={managedPage.heroTitle}
+      heroSubtitle={managedPage.heroSubtitle}
+      heroImage={managedPage.heroImage}
+      heroCtaText={managedPage.heroCtaText}
+      heroCtaLink={managedPage.heroCtaLink}
+      sections={managedPage.sections}
+    />
   }
 
   return (
@@ -194,8 +211,8 @@ export default function VisualizerPage() {
           </div>
 
           <div
-            className={`md:hidden overflow-hidden transition-all duration-500 ${
-              isMobileMenuOpen ? 'max-h-80 pb-6' : 'max-h-0'
+            className={`md:hidden overflow-hidden transition-all duration-300 bg-background/95 backdrop-blur-md border-t border-border/50 ${
+              isMobileMenuOpen ? 'max-h-[70vh] pb-6 overflow-y-auto' : 'max-h-0'
             }`}
           >
             <div className="flex flex-col gap-4 pt-4">
@@ -211,6 +228,7 @@ export default function VisualizerPage() {
               ))}
               <Link
                 href="/visualizer"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="text-foreground font-medium"
               >
                 3D Görselleştirici
@@ -625,3 +643,4 @@ export default function VisualizerPage() {
     </div>
   )
 }
+

@@ -7,6 +7,8 @@ import { OzTeleviLogo, OzTeleviLogoLight } from '@/components/OzTeleviLogo'
 import { CartIcon } from '@/components/CartIcon'
 import { CartDrawer } from '@/components/CartDrawer'
 import { useCart } from '@/contexts/CartContext'
+import ManagedPage from '@/components/ManagedPage'
+import { usePageContent } from '@/hooks/usePageContent'
 
 // ============================================
 // ÖzTelevi Galeri - Ev Tekstili ve Perdeleri
@@ -123,6 +125,8 @@ const categories = [
 ]
 
 export default function GalleryPage() {
+  const { content: managedPage } = usePageContent('galeri')
+
   const [activeFilter, setActiveFilter] = useState('all')
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null)
   const [isLoaded] = useState(true)
@@ -216,6 +220,19 @@ export default function GalleryPage() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  if (managedPage?.htmlContent || managedPage?.heroTitle) {
+    return <ManagedPage 
+      html={managedPage.htmlContent} 
+      schemaJson={managedPage.schemaJson}
+      heroTitle={managedPage.heroTitle}
+      heroSubtitle={managedPage.heroSubtitle}
+      heroImage={managedPage.heroImage}
+      heroCtaText={managedPage.heroCtaText}
+      heroCtaLink={managedPage.heroCtaLink}
+      sections={managedPage.sections}
+    />
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -348,8 +365,8 @@ function Navigation() {
 
         {/* Mobile Menu */}
         <div
-          className={`md:hidden overflow-hidden transition-all duration-500 ${
-            isMobileMenuOpen ? 'max-h-80 pb-6' : 'max-h-0'
+          className={`md:hidden overflow-hidden transition-all duration-300 bg-background/95 backdrop-blur-md border-t border-border/50 ${
+            isMobileMenuOpen ? 'max-h-[70vh] pb-6 overflow-y-auto' : 'max-h-0'
           }`}
         >
           <div className="flex flex-col gap-4 pt-4">
@@ -845,3 +862,4 @@ function Footer() {
     </footer>
   )
 }
+

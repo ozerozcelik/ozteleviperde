@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/api-auth'
 
 // ============================================
 // Admin Dashboard Stats API
@@ -8,6 +9,38 @@ import { db } from '@/lib/db'
 
 export async function GET() {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
+    // Test database connection first
+    try {
+      await db.$connect()
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError)
+      return NextResponse.json({
+        success: true,
+        data: {
+          summary: {
+            products: { total: 0, inStock: 0, outOfStock: 0 },
+            orders: { total: 0, pending: 0, completed: 0 },
+            revenue: { total: 0, monthly: 0, daily: 0, growth: 0 },
+            users: { total: 0, newThisMonth: 0 },
+            messages: { total: 0, new: 0 },
+            quotes: { total: 0, pending: 0 },
+            newsletter: 0,
+          },
+          lowStockProducts: [],
+          recentOrders: [],
+          topProducts: [],
+          charts: {
+            revenueByDay: [],
+            ordersByStatus: [],
+            productsByCategory: [],
+          },
+        },
+      })
+    }
+
     // Tarih hesaplamaları
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())

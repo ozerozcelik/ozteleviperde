@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/api-auth'
 
 // Koleksiyonları listele
 export async function GET(request: NextRequest) {
@@ -65,6 +66,9 @@ export async function GET(request: NextRequest) {
 // Yeni koleksiyon ekle (admin için)
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
     const { name, slug, description, image, featured, order } = body
 
@@ -116,6 +120,9 @@ export async function POST(request: NextRequest) {
 // Koleksiyon güncelle (admin için)
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
     const { id, ...data } = body
 
@@ -148,6 +155,9 @@ export async function PUT(request: NextRequest) {
 // Koleksiyon sil (admin için)
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 

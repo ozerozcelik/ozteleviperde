@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/api-auth'
+import { enforceRateLimit, enforceTrustedOrigin } from '@/lib/request-security'
 
 // Teklif talebi gönderimi
 export async function POST(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
+    const rateLimitError = await enforceRateLimit(request, {
+      key: 'quote',
+      limit: 6,
+      windowMs: 10 * 60 * 1000,
+    })
+    if (rateLimitError) return rateLimitError
+
     const body = await request.json()
     const { name, email, phone, productType, message } = body
 
@@ -52,6 +64,9 @@ export async function POST(request: NextRequest) {
 // Teklif taleplerini listele (admin için)
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const limit = parseInt(searchParams.get('limit') || '50')

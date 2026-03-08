@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { useSession } from 'next-auth/react'
 
 // ============================================
 // Types
@@ -45,13 +46,28 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(undefin
 const LOCAL_STORAGE_KEY = 'oztelevi_favorites'
 const GUEST_ID_KEY = 'oztelevi_guest_id'
 
+function isFavoriteArray(value: unknown): value is Favorite[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Favorite).productId === 'string'
+    )
+  )
+}
+
 // ============================================
 // Provider
 // ============================================
 export function FavoritesProvider({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession()
   const [favorites, setFavorites] = useState<Favorite[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [guestId, setGuestId] = useState('')
+  const userId = session?.user?.id
+  const isAuthenticated = status === 'authenticated' && !!userId
 
   // Generate or get guest ID
   useEffect(() => {
@@ -69,10 +85,19 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
-        setFavorites(parsed)
+        if (isFavoriteArray(parsed)) {
+          setFavorites(parsed)
+        } else {
+          localStorage.removeItem(LOCAL_STORAGE_KEY)
+          setFavorites([])
+        }
+      } else {
+        setFavorites([])
       }
     } catch (error) {
       console.error('Error loading local favorites:', error)
+      localStorage.removeItem(LOCAL_STORAGE_KEY)
+      setFavorites([])
     }
   }, [])
 
@@ -87,41 +112,71 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   // Load favorites from API
   const refreshFavorites = useCallback(async () => {
-    if (!guestId) return
-
     setIsLoading(true)
-    try {
-      const response = await fetch(`/api/favorites?guestId=${guestId}`)
-      const data = await response.json()
 
-      if (data.success && data.data) {
-        setFavorites(data.data)
-        saveLocalFavorites(data.data)
-      } else {
-        // If API fails, load from localStorage
-        loadLocalFavorites()
+    if (isAuthenticated) {
+      try {
+        const response = await fetch('/api/favorites')
+        const data = await response.json()
+
+        if (data.success && Array.isArray(data.data)) {
+          setFavorites(data.data)
+        } else {
+          setFavorites([])
+        }
+      } catch (error) {
+        console.error('Error fetching favorites:', error)
+        setFavorites([])
+      } finally {
+        setIsLoading(false)
       }
-    } catch (error) {
-      console.error('Error fetching favorites:', error)
-      // Load from localStorage as fallback
-      loadLocalFavorites()
-    } finally {
-      setIsLoading(false)
+
+      return
     }
-  }, [guestId, loadLocalFavorites, saveLocalFavorites])
+
+    if (!guestId) {
+      setIsLoading(false)
+      return
+    }
+
+    loadLocalFavorites()
+    setIsLoading(false)
+  }, [guestId, isAuthenticated, loadLocalFavorites])
 
   // Initial load
   useEffect(() => {
+    if (isAuthenticated) {
+      refreshFavorites()
+      return
+    }
+
     if (guestId) {
-      // First load from localStorage for instant display
       loadLocalFavorites()
-      // Then sync with API
       refreshFavorites()
     }
-  }, [guestId, loadLocalFavorites, refreshFavorites])
+  }, [guestId, isAuthenticated, loadLocalFavorites, refreshFavorites])
 
   // Add to favorites
   const addToFavorites = useCallback(async (productId: string) => {
+    if (isAuthenticated) {
+      try {
+        const response = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId }),
+        })
+
+        const data = await response.json()
+        if (data.success) {
+          await refreshFavorites()
+        }
+      } catch (error) {
+        console.error('Error adding to favorites:', error)
+      }
+
+      return
+    }
+
     if (!guestId) return
 
     // Optimistic update
@@ -151,31 +206,22 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       return newFavs
     })
 
-    try {
-      const response = await fetch('/api/favorites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId, guestId }),
-      })
-
-      const data = await response.json()
-
-      if (data.success && data.data) {
-        // Update with real data from server
-        setFavorites((prev) => {
-          const filtered = prev.filter((f) => f.productId !== productId)
-          const newFavs = [...filtered, data.data]
-          saveLocalFavorites(newFavs)
-          return newFavs
-        })
-      }
-    } catch (error) {
-      console.error('Error adding to favorites:', error)
-    }
-  }, [guestId, saveLocalFavorites])
+  }, [guestId, isAuthenticated, refreshFavorites, saveLocalFavorites])
 
   // Remove from favorites
   const removeFromFavorites = useCallback(async (productId: string) => {
+    if (isAuthenticated) {
+      try {
+        await fetch(`/api/favorites?productId=${productId}`, {
+          method: 'DELETE',
+        })
+        await refreshFavorites()
+      } catch (error) {
+        console.error('Error removing from favorites:', error)
+      }
+      return
+    }
+
     if (!guestId) return
 
     // Optimistic update
@@ -185,14 +231,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       return newFavs
     })
 
-    try {
-      await fetch(`/api/favorites?guestId=${guestId}&productId=${productId}`, {
-        method: 'DELETE',
-      })
-    } catch (error) {
-      console.error('Error removing from favorites:', error)
-    }
-  }, [guestId, saveLocalFavorites])
+  }, [guestId, isAuthenticated, refreshFavorites, saveLocalFavorites])
 
   // Toggle favorite
   const toggleFavorite = useCallback(async (productId: string) => {

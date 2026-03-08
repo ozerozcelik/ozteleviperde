@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/api-auth'
+
+interface OrderRequestItem {
+  productId: string
+  quantity: number
+}
 
 // ============================================
 // Orders API - Admin Sipariş Yönetimi
@@ -8,6 +14,9 @@ import { db } from '@/lib/db'
 // Siparişleri listele
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const userId = searchParams.get('userId')
@@ -97,8 +106,11 @@ export async function GET(request: NextRequest) {
 // Sipariş durumu güncelle
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
-    const { id, status, paymentStatus, trackingNumber, notes } = body
+    const { id, status, paymentStatus, notes } = body
 
     if (!id) {
       return NextResponse.json(
@@ -110,7 +122,6 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, unknown> = {}
     if (status) updateData.status = status
     if (paymentStatus) updateData.paymentStatus = paymentStatus
-    if (trackingNumber !== undefined) updateData.trackingNumber = trackingNumber
     if (notes !== undefined) updateData.notes = notes
 
     const order = await db.order.update({
@@ -156,9 +167,6 @@ export async function POST(request: NextRequest) {
       shippingCity,
       shippingPostal,
       items,
-      subtotal,
-      discount,
-      total,
       couponId,
       notes,
     } = body
@@ -178,57 +186,126 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Sipariş numarası oluştur
-    const orderCount = await db.order.count()
-    const orderNumber = `OZT-${new Date().getFullYear()}-${String(orderCount + 1).padStart(5, '0')}`
+    const orderItems = items as OrderRequestItem[]
 
-    // Sipariş oluştur
-    const order = await db.order.create({
-      data: {
-        orderNumber,
-        userId: userId || null,
-        billingName,
-        billingEmail,
-        billingPhone,
-        billingAddress,
-        billingCity,
-        billingPostal,
-        shippingName: shippingName || billingName,
-        shippingPhone: shippingPhone || billingPhone,
-        shippingAddress: shippingAddress || billingAddress,
-        shippingCity: shippingCity || billingCity,
-        shippingPostal: shippingPostal || billingPostal,
-        subtotal,
-        discount: discount || 0,
-        total,
-        couponId: couponId || null,
-        notes,
-        status: 'pending',
-        paymentStatus: 'pending',
-        items: {
-          create: items.map((item: { productId: string; productName: string; quantity: number; price: number; total: number }) => ({
-            productId: item.productId,
-            productName: item.productName,
-            quantity: item.quantity,
-            price: item.price,
-            total: item.total,
-          })),
-        },
-      },
-      include: {
-        items: true,
-      },
-    })
+    if (!orderItems.every((item) => item.productId && item.quantity > 0)) {
+      return NextResponse.json(
+        { error: 'Sipariş ürün bilgileri geçersiz.' },
+        { status: 400 }
+      )
+    }
 
-    // Stok düş
-    for (const item of items) {
-      await db.product.update({
-        where: { id: item.productId },
+    const order = await db.$transaction(async (tx) => {
+      const productIds = [...new Set(orderItems.map((item) => item.productId))]
+      const products = await tx.product.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, name: true, price: true, stock: true, inStock: true },
+      })
+
+      const productMap = new Map(products.map((product) => [product.id, product]))
+
+      const normalizedItems = orderItems.map((item) => {
+        const product = productMap.get(item.productId)
+
+        if (!product) {
+          throw new Error('Ürün bulunamadı')
+        }
+
+        if (!product.inStock || product.stock < item.quantity) {
+          throw new Error('Stokta yeterli ürün yok')
+        }
+
+        const lineTotal = product.price * item.quantity
+
+        return {
+          productId: product.id,
+          productName: product.name,
+          quantity: item.quantity,
+          price: product.price,
+          total: lineTotal,
+        }
+      })
+
+      const subtotal = normalizedItems.reduce((sum: number, item: { total: number }) => sum + item.total, 0)
+
+      let discount = 0
+      let appliedCouponId: string | null = null
+
+      if (couponId) {
+        const coupon = await tx.coupon.findUnique({ where: { id: couponId } })
+        const now = new Date()
+
+        if (coupon && coupon.active) {
+          const hasStarted = !coupon.startDate || now >= coupon.startDate
+          const notExpired = !coupon.endDate || now <= coupon.endDate
+          const hasUsage = !coupon.usageLimit || coupon.usedCount < coupon.usageLimit
+          const minAmountOk = !coupon.minAmount || subtotal >= coupon.minAmount
+
+          if (hasStarted && notExpired && hasUsage && minAmountOk) {
+            if (coupon.type === 'percentage') {
+              discount = subtotal * (coupon.value / 100)
+              if (coupon.maxDiscount) {
+                discount = Math.min(discount, coupon.maxDiscount)
+              }
+            } else {
+              discount = coupon.value
+            }
+
+            appliedCouponId = coupon.id
+
+            await tx.coupon.update({
+              where: { id: coupon.id },
+              data: { usedCount: { increment: 1 } },
+            })
+          }
+        }
+      }
+
+      const total = Math.max(subtotal - discount, 0)
+      const orderNumber = `OZT-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
+
+      const createdOrder = await tx.order.create({
         data: {
-          stock: { decrement: item.quantity },
+          orderNumber,
+          userId: userId || null,
+          billingName,
+          billingEmail,
+          billingPhone,
+          billingAddress,
+          billingCity,
+          billingPostal,
+          shippingName: shippingName || billingName,
+          shippingPhone: shippingPhone || billingPhone,
+          shippingAddress: shippingAddress || billingAddress,
+          shippingCity: shippingCity || billingCity,
+          shippingPostal: shippingPostal || billingPostal,
+          subtotal,
+          discount,
+          total,
+          couponId: appliedCouponId,
+          notes,
+          status: 'pending',
+          paymentStatus: 'pending',
+          items: {
+            create: normalizedItems,
+          },
+        },
+        include: {
+          items: true,
         },
       })
-    }
+
+      for (const item of normalizedItems) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: { decrement: item.quantity },
+          },
+        })
+      }
+
+      return createdOrder
+    })
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 import { db } from '@/lib/db'
 import { cookies } from 'next/headers'
+import authOptions from '@/lib/auth-options'
+import { enforceTrustedOrigin } from '@/lib/request-security'
 
 // Session ID cookie name
 const SESSION_ID_COOKIE = 'cart_session_id'
@@ -22,18 +25,22 @@ async function getSessionId(): Promise<string> {
   return sessionId
 }
 
+async function getCurrentUserId(): Promise<string | null> {
+  const session = await getServerSession(authOptions)
+  return session?.user?.id ?? null
+}
+
 // Get cart with items and product details
 // GET /api/cart - Get current user's cart or session cart
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const userId = await getCurrentUserId()
 
     const cookieStore = await cookies()
     const sessionId = cookieStore.get(SESSION_ID_COOKIE)?.value
 
     // Find cart by userId or sessionId
-    let cart = null
+    let cart: any = null
 
     if (userId) {
       cart = await db.cart.findFirst({
@@ -109,13 +116,16 @@ export async function GET(request: NextRequest) {
 // POST /api/cart - Create new cart
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { userId } = body
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
+    await request.json().catch(() => null)
+    const userId = await getCurrentUserId()
 
     const sessionId = await getSessionId()
 
     // Check if cart already exists
-    let existingCart = null
+    let existingCart: any = null
     if (userId) {
       existingCart = await db.cart.findFirst({
         where: { userId },
@@ -170,13 +180,42 @@ export async function POST(request: NextRequest) {
 // PUT /api/cart - Update cart (apply coupon)
 export async function PUT(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
     const body = await request.json()
     const { cartId, couponId, action } = body
+    const userId = await getCurrentUserId()
+    const cookieStore = await cookies()
+    const sessionId = cookieStore.get(SESSION_ID_COOKIE)?.value
 
     if (!cartId) {
       return NextResponse.json(
         { success: false, error: 'Sepet ID gerekli.' },
         { status: 400 }
+      )
+    }
+
+    const existingCart = await db.cart.findUnique({
+      where: { id: cartId },
+      select: { id: true, userId: true, sessionId: true },
+    })
+
+    if (!existingCart) {
+      return NextResponse.json(
+        { success: false, error: 'Sepet bulunamadı.' },
+        { status: 404 }
+      )
+    }
+
+    const canAccess = userId
+      ? existingCart.userId === userId
+      : !!sessionId && existingCart.sessionId === sessionId
+
+    if (!canAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Bu sepet için yetkiniz yok.' },
+        { status: 403 }
       )
     }
 
@@ -242,13 +281,42 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/cart - Clear cart
 export async function DELETE(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
     const { searchParams } = new URL(request.url)
     const cartId = searchParams.get('cartId')
+    const userId = await getCurrentUserId()
+    const cookieStore = await cookies()
+    const sessionId = cookieStore.get(SESSION_ID_COOKIE)?.value
 
     if (!cartId) {
       return NextResponse.json(
         { success: false, error: 'Sepet ID gerekli.' },
         { status: 400 }
+      )
+    }
+
+    const existingCart = await db.cart.findUnique({
+      where: { id: cartId },
+      select: { id: true, userId: true, sessionId: true },
+    })
+
+    if (!existingCart) {
+      return NextResponse.json(
+        { success: false, error: 'Sepet bulunamadı.' },
+        { status: 404 }
+      )
+    }
+
+    const canAccess = userId
+      ? existingCart.userId === userId
+      : !!sessionId && existingCart.sessionId === sessionId
+
+    if (!canAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Bu sepet için yetkiniz yok.' },
+        { status: 403 }
       )
     }
 

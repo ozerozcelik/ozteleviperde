@@ -11,6 +11,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+import ManagedPage from '@/components/ManagedPage'
+import { usePageContent } from '@/hooks/usePageContent'
 
 // ============================================
 // Types
@@ -125,6 +127,8 @@ const categoryLabels: Record<string, string> = {
 // FAQ Page Component
 // ============================================
 export default function FAQPage() {
+  const { content: managedPage } = usePageContent('sikca-sorulan-sorular')
+
   const [activeSection, setActiveSection] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -193,6 +197,19 @@ export default function FAQPage() {
     { href: '/koleksiyonlar', label: 'Koleksiyonlar' },
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
   ]
+
+  if (managedPage?.htmlContent || managedPage?.heroTitle) {
+    return <ManagedPage 
+      html={managedPage.htmlContent} 
+      schemaJson={managedPage.schemaJson}
+      heroTitle={managedPage.heroTitle}
+      heroSubtitle={managedPage.heroSubtitle}
+      heroImage={managedPage.heroImage}
+      heroCtaText={managedPage.heroCtaText}
+      heroCtaLink={managedPage.heroCtaLink}
+      sections={managedPage.sections}
+    />
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -264,8 +281,8 @@ export default function FAQPage() {
 
           {/* Mobile Menu */}
           <div
-            className={`md:hidden overflow-hidden transition-all duration-500 ${
-              isMobileMenuOpen ? 'max-h-80 pb-6' : 'max-h-0'
+            className={`md:hidden overflow-hidden transition-all duration-300 bg-background/95 backdrop-blur-md border-t border-border/50 ${
+              isMobileMenuOpen ? 'max-h-[70vh] pb-6 overflow-y-auto' : 'max-h-0'
             }`}
           >
             <div className="flex flex-col gap-4 pt-4">
@@ -544,3 +561,4 @@ function Footer() {
     </footer>
   )
 }
+

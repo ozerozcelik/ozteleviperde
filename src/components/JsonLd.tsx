@@ -1,6 +1,7 @@
 'use client'
 
 import Script from 'next/script'
+import { SITE_URL, toAbsoluteUrl } from '@/lib/site'
 
 // ============================================
 // Organization Schema
@@ -9,8 +10,8 @@ const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: 'ÖzTelevi',
-  url: 'https://oztelevi.com',
-  logo: 'https://oztelevi.com/images/logo.png',
+  url: SITE_URL,
+  logo: toAbsoluteUrl('/images/logo.png'),
   description: 'Japon estetiğinin sade güzelliği ve İskandinav sadeliğinden ilham alan, el işçiliği tekstiller ve perdeler.',
   address: {
     '@type': 'PostalAddress',
@@ -40,15 +41,7 @@ const websiteSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: 'ÖzTelevi',
-  url: 'https://oztelevi.com',
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: {
-      '@type': 'EntryPoint',
-      urlTemplate: 'https://oztelevi.com/?q={search_term_string}',
-    },
-    'query-input': 'required name=search_term_string',
-  },
+  url: SITE_URL,
 }
 
 // ============================================
@@ -58,9 +51,9 @@ const localBusinessSchema = {
   '@context': 'https://schema.org',
   '@type': 'HomeGoodsStore',
   name: 'ÖzTelevi',
-  image: 'https://oztelevi.com/images/hero.png',
-  '@id': 'https://oztelevi.com',
-  url: 'https://oztelevi.com',
+  image: toAbsoluteUrl('/images/hero.png'),
+  '@id': SITE_URL,
+  url: SITE_URL,
   telephone: '+90-212-555-0123',
   address: {
     '@type': 'PostalAddress',
@@ -146,8 +139,8 @@ export function ProductJsonLd({
     '@type': 'Product',
     name,
     description,
-    image: `https://oztelevi.com${image}`,
-    url: `https://oztelevi.com/urun/${slug}`,
+    image: toAbsoluteUrl(image),
+    url: toAbsoluteUrl(`/urun/${slug}`),
     sku: slug,
     brand: {
       '@type': 'Brand',
@@ -156,9 +149,9 @@ export function ProductJsonLd({
     category,
     offers: {
       '@type': 'Offer',
-      url: `https://oztelevi.com/urun/${slug}`,
+      url: toAbsoluteUrl(`/urun/${slug}`),
       priceCurrency: currency,
-      price: price / 100, // Kuruş değil, TL olarak
+      price,
       priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       availability: inStock
         ? 'https://schema.org/InStock'
@@ -200,7 +193,7 @@ export function BreadcrumbJsonLd({ items }: { items: BreadcrumbItem[] }) {
       '@type': 'ListItem',
       position: index + 1,
       name: item.name,
-      item: `https://oztelevi.com${item.url}`,
+      item: toAbsoluteUrl(item.url),
     })),
   }
 

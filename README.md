@@ -139,3 +139,24 @@ This scaffold includes a comprehensive set of modern web development tools:
 ---
 
 Built with ❤️ for the developer community. Supercharged by [Z.ai](https://chat.z.ai) 🚀
+
+## Production Database (Vercel)
+
+This project should use PostgreSQL in production. SQLite is not suitable for Vercel serverless runtime.
+
+1. Create a Postgres database (Vercel Postgres, Neon, Supabase).
+2. Set `DATABASE_URL` in Vercel Project Settings -> Environment Variables.
+3. Deploy once so Prisma client is regenerated (`postinstall` runs `prisma generate`).
+4. Apply schema from your machine:
+
+```bash
+npx prisma db push
+```
+
+5. Create initial admin user by calling `POST /api/admin/init` with body:
+
+```json
+{ "setupKey": "<ADMIN_SETUP_KEY>" }
+```
+
+Required env vars: `ADMIN_SETUP_KEY`, `ADMIN_INIT_EMAIL`, `ADMIN_INIT_PASSWORD`, `ADMIN_INIT_NAME`.

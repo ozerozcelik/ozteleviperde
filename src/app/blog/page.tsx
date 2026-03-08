@@ -5,6 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import SocialMediaButtons from '@/components/SocialMediaButtons'
+import ManagedPage from '@/components/ManagedPage'
+import { usePageContent } from '@/hooks/usePageContent'
 
 // ============================================
 // Types
@@ -38,6 +40,8 @@ interface BlogResponse {
 // Blog Listing Page
 // ============================================
 export default function BlogPage() {
+  const { content: managedPage } = usePageContent('blog')
+
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [blogs, setBlogs] = useState<BlogPost[]>([])
@@ -129,6 +133,19 @@ export default function BlogPage() {
     })
   }
 
+  if (managedPage?.htmlContent || managedPage?.heroTitle) {
+    return <ManagedPage 
+      html={managedPage.htmlContent} 
+      schemaJson={managedPage.schemaJson}
+      heroTitle={managedPage.heroTitle}
+      heroSubtitle={managedPage.heroSubtitle}
+      heroImage={managedPage.heroImage}
+      heroCtaText={managedPage.heroCtaText}
+      heroCtaLink={managedPage.heroCtaLink}
+      sections={managedPage.sections}
+    />
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Navigation */}
@@ -199,31 +216,35 @@ export default function BlogPage() {
 
           {/* Mobile Menu */}
           <div
-            className={`md:hidden overflow-hidden transition-all duration-500 ${
-              isMobileMenuOpen ? 'max-h-80 pb-6' : 'max-h-0'
+            className={`md:hidden overflow-hidden transition-all duration-300 bg-background/95 backdrop-blur-md border-t border-border/50 ${
+              isMobileMenuOpen ? 'max-h-[70vh] pb-6 overflow-y-auto' : 'max-h-0'
             }`}
           >
             <div className="flex flex-col gap-4 pt-4">
               <Link
                 href="/"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="text-muted-foreground hover:text-foreground transition-colors duration-300 py-2"
               >
                 Ana Sayfa
               </Link>
               <Link
                 href="/galeri"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="text-muted-foreground hover:text-foreground transition-colors duration-300 py-2"
               >
                 Galeri
               </Link>
               <Link
                 href="/blog"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="text-foreground font-medium py-2"
               >
                 Blog
               </Link>
               <Link
                 href="/#iletisim"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="mt-2 px-6 py-3 bg-foreground text-background text-center text-sm tracking-wide rounded-full"
               >
                 Bize Ulaşın
@@ -548,3 +569,4 @@ function Footer() {
     </footer>
   )
 }
+

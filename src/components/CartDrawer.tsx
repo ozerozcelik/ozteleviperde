@@ -24,6 +24,7 @@ export function CartDrawer() {
     closeDrawer,
     isDrawerOpen,
   } = useCart()
+  const cartItems = Array.isArray(cart?.items) ? cart.items : []
 
   const [couponCode, setCouponCode] = useState('')
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
@@ -65,7 +66,7 @@ export function CartDrawer() {
         {/* Header */}
         <SheetHeader className="px-6 py-4 border-b border-border/50">
           <SheetTitle className="text-xl font-medium">
-            Sepetim ({cart?.items.length || 0} ürün)
+            Sepetim ({cartItems.length} ürün)
           </SheetTitle>
         </SheetHeader>
 
@@ -75,7 +76,7 @@ export function CartDrawer() {
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
             </div>
-          ) : !cart || cart.items.length === 0 ? (
+          ) : !cart || cartItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <svg
                 viewBox="0 0 24 24"
@@ -100,7 +101,7 @@ export function CartDrawer() {
             </div>
           ) : (
             <div className="space-y-1">
-              {cart.items.map((item) => (
+              {cartItems.map((item) => (
                 <CartItem key={item.id} item={item} compact />
               ))}
             </div>
@@ -108,7 +109,7 @@ export function CartDrawer() {
         </div>
 
         {/* Footer */}
-        {cart && cart.items.length > 0 && (
+        {cart && cartItems.length > 0 && (
           <SheetFooter className="border-t border-border/50 px-6 py-4 mt-auto">
             <div className="w-full space-y-4">
               {/* Coupon Input */}

@@ -154,7 +154,7 @@ export function CartItem({ item, compact = false }: CartItemProps) {
             </span>
             <button
               onClick={() => handleQuantityChange(item.quantity + 1)}
-              disabled={isUpdating || isLoading || (item.product.stock && item.quantity >= item.product.stock)}
+              disabled={isUpdating || isLoading || (item.product.stock > 0 && item.quantity >= item.product.stock)}
               className="w-8 h-8 flex items-center justify-center text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Artır"
             >
@@ -170,7 +170,7 @@ export function CartItem({ item, compact = false }: CartItemProps) {
         </div>
 
         {/* Stock Warning */}
-        {item.product.stock && item.quantity >= item.product.stock && (
+        {item.product.stock > 0 && item.quantity >= item.product.stock && (
           <p className="text-xs text-orange-600 mt-2">
             Stok sınırına ulaşıldı
           </p>

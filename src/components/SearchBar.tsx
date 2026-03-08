@@ -34,6 +34,19 @@ interface SearchResults {
   blogs: SearchResultBlog[]
 }
 
+function normalizeSearchResults(value: unknown): SearchResults {
+  if (!value || typeof value !== 'object') {
+    return { products: [], blogs: [] }
+  }
+
+  const raw = value as { products?: unknown; blogs?: unknown }
+
+  return {
+    products: Array.isArray(raw.products) ? raw.products as SearchResultProduct[] : [],
+    blogs: Array.isArray(raw.blogs) ? raw.blogs as SearchResultBlog[] : [],
+  }
+}
+
 // ============================================
 // Category Labels
 // ============================================
@@ -103,10 +116,13 @@ export function SearchBar({ isOpen, onClose }: SearchBarProps) {
       const data = await response.json()
 
       if (data.success) {
-        setResults(data.data)
+        setResults(normalizeSearchResults(data.data))
+      } else {
+        setResults({ products: [], blogs: [] })
       }
     } catch (error) {
       console.error('Search error:', error)
+      setResults({ products: [], blogs: [] })
     } finally {
       setIsLoading(false)
     }

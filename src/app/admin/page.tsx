@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
+import { signIn, signOut, useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,6 +55,17 @@ import {
   Image as ImageIcon,
   RefreshCw,
 } from 'lucide-react'
+import MediaLibraryGrid from '@/components/admin/MediaLibraryGrid'
+import ProductFormDialog from '@/components/admin/ProductFormDialog'
+import type {
+  ContentPage,
+  MediaAsset,
+  PageSection,
+  ProductFieldConfig,
+  ProductFormState,
+} from '@/components/admin/types'
+import type { PageEditorPreset } from '@/lib/page-editor-presets'
+import type { MediaStorageMode } from '@/lib/media-storage'
 
 // ============================================
 // Types
@@ -141,6 +153,67 @@ interface Product {
   createdAt: string
 }
 
+const EMPTY_PAGE_FORM = {
+  title: '',
+  seoTitle: '',
+  seoDescription: '',
+  heroTitle: '',
+  heroSubtitle: '',
+  heroImage: '',
+  heroCtaText: '',
+  heroCtaLink: '',
+  sections: '',
+  htmlContent: '',
+  schemaJson: '',
+}
+
+function withFallback(value: string | null | undefined, fallback = '') {
+  if (typeof value !== 'string') return fallback
+  return value.trim().length ? value : fallback
+}
+
+function parsePageSections(sections: string | null | undefined): PageSection[] {
+  if (!sections) return []
+
+  try {
+    const parsed = JSON.parse(sections)
+    return Array.isArray(parsed) ? parsed as PageSection[] : []
+  } catch {
+    return []
+  }
+}
+
+function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) {
+  const currentSections = parsePageSections(page.sections)
+  const resolvedSections =
+    currentSections.length > 0 && baseline
+      ? currentSections.map((section, index) => ({
+          ...baseline.sections[index],
+          ...section,
+          key: section.key || baseline.sections[index]?.key,
+        }))
+      : currentSections.length > 0
+        ? currentSections
+        : baseline?.sections || []
+
+  return {
+    form: {
+      title: withFallback(page.title, baseline?.title || ''),
+      seoTitle: withFallback(page.seoTitle, baseline?.seoTitle || ''),
+      seoDescription: withFallback(page.seoDescription, baseline?.seoDescription || ''),
+      heroTitle: withFallback(page.heroTitle, baseline?.heroTitle || ''),
+      heroSubtitle: withFallback(page.heroSubtitle, baseline?.heroSubtitle || ''),
+      heroImage: withFallback(page.heroImage, baseline?.heroImage || ''),
+      heroCtaText: withFallback(page.heroCtaText, baseline?.heroCtaText || ''),
+      heroCtaLink: withFallback(page.heroCtaLink, baseline?.heroCtaLink || ''),
+      sections: resolvedSections.length > 0 ? JSON.stringify(resolvedSections) : '',
+      htmlContent: withFallback(page.htmlContent, baseline?.htmlContent || ''),
+      schemaJson: withFallback(page.schemaJson, baseline?.schemaJson || ''),
+    },
+    sections: resolvedSections,
+  }
+}
+
 interface QuoteRequest {
   id: string
   name: string
@@ -178,14 +251,45 @@ interface Order {
   items: { productName: string; quantity: number; price: number }[]
 }
 
+const PRODUCT_FORM_FIELDS: ProductFieldConfig[] = [
+  { key: 'name', label: 'Ürün Adı', type: 'text', required: true, autoSlug: true },
+  { key: 'slug', label: 'Slug', type: 'text', required: true },
+  { key: 'description', label: 'Açıklama', type: 'textarea', required: true, rows: 4 },
+  { key: 'price', label: 'Fiyat', type: 'number', required: true },
+  { key: 'comparePrice', label: 'Karşılaştırma Fiyatı', type: 'number' },
+  { key: 'stock', label: 'Stok Miktarı', type: 'number' },
+  {
+    key: 'category',
+    label: 'Kategori',
+    type: 'select',
+    options: [
+      { value: 'perdeler', label: 'Perdeler' },
+      { value: 'tekstiller', label: 'Tekstiller' },
+      { value: 'yatak-odasi', label: 'Yatak Odası' },
+      { value: 'aksesuarlar', label: 'Aksesuarlar' },
+    ],
+  },
+  {
+    key: 'currency',
+    label: 'Para Birimi',
+    type: 'select',
+    options: [
+      { value: 'TRY', label: 'TRY - Türk Lirası' },
+      { value: 'USD', label: 'USD - Dolar' },
+      { value: 'EUR', label: 'EUR - Euro' },
+    ],
+  },
+  { key: 'inStock', label: 'Stokta', type: 'toggle' },
+  { key: 'featured', label: 'Öne Çıkan', type: 'toggle' },
+]
+
 // ============================================
 // Admin Panel Component
 // ============================================
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return sessionStorage.getItem('adminAuth') === 'true'
-  })
+  const { data: session, status } = useSession()
+  const isAuthenticated = status === 'authenticated' && session?.user?.role === 'admin'
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -201,12 +305,26 @@ export default function AdminPage() {
   const [quotes, setQuotes] = useState<QuoteRequest[]>([])
   const [faqs, setFaqs] = useState<FAQ[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [pages, setPages] = useState<ContentPage[]>([])
+  const [selectedPageSlug, setSelectedPageSlug] = useState('anasayfa')
+  const [selectedPage, setSelectedPage] = useState<ContentPage | null>(null)
+  const [pageBaseline, setPageBaseline] = useState<PageEditorPreset | null>(null)
+  const [pageForm, setPageForm] = useState(EMPTY_PAGE_FORM)
+  const [pageSections, setPageSections] = useState<PageSection[]>([])
+  const [sectionHistory, setSectionHistory] = useState<PageSection[][]>([])
+  const [sectionFuture, setSectionFuture] = useState<PageSection[][]>([])
+  const [draggingSectionIndex, setDraggingSectionIndex] = useState<number | null>(null)
+  const [isAutoSavingPage, setIsAutoSavingPage] = useState(false)
+  const [autoSaveMessage, setAutoSaveMessage] = useState('')
+  const [isPageDirty, setIsPageDirty] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSavingPage, setIsSavingPage] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
 
   // Product form states
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [productForm, setProductForm] = useState({
+  const [productForm, setProductForm] = useState<ProductFormState>({
     name: '',
     slug: '',
     description: '',
@@ -241,6 +359,11 @@ export default function AdminPage() {
   // Upload states
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [mediaLibrary, setMediaLibrary] = useState<MediaAsset[]>([])
+  const [isMediaLoading, setIsMediaLoading] = useState(false)
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false)
+  const [mediaStorageMode, setMediaStorageMode] = useState<MediaStorageMode>('local')
+  const [mediaStorageWarning, setMediaStorageWarning] = useState('')
 
   // View message dialog
   const [messageDialogOpen, setMessageDialogOpen] = useState(false)
@@ -252,7 +375,8 @@ export default function AdminPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
   const hasFetchedRef = useRef(false)
-  const ADMIN_PASSWORD = 'oztelevi2024'
+  const skipNextSectionHistoryRef = useRef(false)
+  const lastSavedPageSnapshotRef = useRef('')
 
   // Fetch Dashboard Stats
   const fetchDashboardStats = useCallback(async () => {
@@ -330,6 +454,175 @@ export default function AdminPage() {
     }
   }, [])
 
+  const fetchPages = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/pages')
+      const data = await res.json()
+      if (data.success) {
+        const pageList: ContentPage[] = data.data
+        setPages(pageList)
+
+        if (pageList.length > 0 && !pageList.some((page) => page.slug === selectedPageSlug)) {
+          setSelectedPageSlug(pageList[0].slug)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching pages:', error)
+    }
+  }, [selectedPageSlug])
+
+  const getPageSnapshot = useCallback(
+    (form: typeof pageForm, sections: PageSection[]) =>
+      JSON.stringify({
+        slug: selectedPageSlug,
+        title: form.title,
+        seoTitle: form.seoTitle,
+        seoDescription: form.seoDescription,
+        heroTitle: form.heroTitle,
+        heroSubtitle: form.heroSubtitle,
+        heroImage: form.heroImage,
+        heroCtaText: form.heroCtaText,
+        heroCtaLink: form.heroCtaLink,
+        htmlContent: form.htmlContent,
+        schemaJson: form.schemaJson,
+        sections,
+      }),
+    [selectedPageSlug]
+  )
+
+  const setSectionsWithHistory = useCallback(
+    (
+      next:
+        | PageSection[]
+        | ((prev: PageSection[]) => PageSection[]),
+      options?: { skipHistory?: boolean }
+    ) => {
+      setPageSections((prev) => {
+        const resolved = typeof next === 'function' ? next(prev) : next
+        const nextSections = resolved.map((section) => ({ ...section }))
+
+        if (options?.skipHistory) {
+          skipNextSectionHistoryRef.current = true
+        } else if (JSON.stringify(prev) !== JSON.stringify(nextSections)) {
+          setSectionHistory((history) => [...history.slice(-39), prev])
+          setSectionFuture([])
+        }
+
+        return nextSections
+      })
+    },
+    []
+  )
+
+  const fetchMediaLibrary = useCallback(async () => {
+    setIsMediaLoading(true)
+    try {
+      const res = await fetch('/api/upload/library')
+      const data = await res.json()
+      if (data.success) {
+        setMediaLibrary(data.data || [])
+        setMediaStorageMode(data.storage === 'cloudinary' ? 'cloudinary' : 'local')
+        setMediaStorageWarning(typeof data.warning === 'string' ? data.warning : '')
+      }
+    } catch (error) {
+      console.error('Error fetching media library:', error)
+    } finally {
+      setIsMediaLoading(false)
+    }
+  }, [getPageSnapshot, setSectionsWithHistory])
+
+  const handleDeleteMedia = async (asset: MediaAsset) => {
+    try {
+      const query = new URLSearchParams({
+        publicId: asset.publicId,
+        url: asset.url,
+      })
+      const res = await fetch(`/api/upload?${query.toString()}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (!data.success) {
+        const usageMessage = Array.isArray(data.usedIn) && data.usedIn.length > 0
+          ? `\nKullanim alanlari:\n- ${data.usedIn.join('\n- ')}`
+          : ''
+        alert((data.error || 'Gorsel silinirken bir hata olustu.') + usageMessage)
+        return
+      }
+      setMediaLibrary((prev) => prev.filter((item) => item.publicId !== asset.publicId))
+    } catch (error) {
+      console.error('Delete media error:', error)
+      alert('Gorsel silinirken bir hata olustu.')
+    }
+  }
+
+  const applyMediaToHero = (url: string) => {
+    setPageForm((prev) => ({ ...prev, heroImage: url }))
+    setShowMediaLibrary(false)
+  }
+
+  const applyBaselineToEditor = useCallback(() => {
+    if (!selectedPage || !pageBaseline) return
+
+    const resolvedState = buildEditorState(
+      {
+        ...selectedPage,
+        title: pageBaseline.title,
+        seoTitle: pageBaseline.seoTitle,
+        seoDescription: pageBaseline.seoDescription,
+        heroTitle: pageBaseline.heroTitle,
+        heroSubtitle: pageBaseline.heroSubtitle,
+        heroImage: pageBaseline.heroImage,
+        heroCtaText: pageBaseline.heroCtaText,
+        heroCtaLink: pageBaseline.heroCtaLink,
+        sections: JSON.stringify(pageBaseline.sections),
+        htmlContent: pageBaseline.htmlContent,
+        schemaJson: pageBaseline.schemaJson,
+      },
+      pageBaseline
+    )
+
+    setPageForm(resolvedState.form)
+    setSectionHistory([])
+    setSectionFuture([])
+    setSectionsWithHistory(resolvedState.sections, { skipHistory: true })
+  }, [pageBaseline, selectedPage, setSectionsWithHistory])
+
+  const applyMediaToProduct = (url: string, mode: 'main' | 'gallery') => {
+    if (mode === 'main') {
+      setProductForm((prev) => ({ ...prev, image: url }))
+    } else {
+      setProductForm((prev) => ({
+        ...prev,
+        images: prev.images.includes(url) ? prev.images : [...prev.images, url],
+      }))
+    }
+  }
+
+  const fetchPageDetail = useCallback(async (slug: string) => {
+    try {
+      setPageBaseline(null)
+      const res = await fetch(`/api/admin/pages/${slug}`)
+      const data = await res.json()
+      if (data.success) {
+        const page: ContentPage = data.data.page
+        const baseline: PageEditorPreset | null = data.data.baseline || null
+        const resolvedState = buildEditorState(page, baseline)
+
+        setSelectedPage(page)
+        setPageBaseline(baseline)
+        setPageForm(resolvedState.form)
+        setSectionHistory([])
+        setSectionFuture([])
+        setSectionsWithHistory(resolvedState.sections, { skipHistory: true })
+        const snapshot = getPageSnapshot(resolvedState.form, resolvedState.sections)
+        lastSavedPageSnapshotRef.current = snapshot
+        setIsPageDirty(false)
+      }
+    } catch (error) {
+      console.error('Error fetching page detail:', error)
+    }
+  }, [])
+
   const fetchAllData = useCallback(async () => {
     setIsLoading(true)
     await Promise.all([
@@ -340,9 +633,10 @@ export default function AdminPage() {
       fetchQuotes(),
       fetchFAQs(),
       fetchOrders(),
+      fetchPages(),
     ])
     setIsLoading(false)
-  }, [fetchDashboardStats, fetchContacts, fetchNewsletters, fetchProducts, fetchQuotes, fetchFAQs, fetchOrders])
+  }, [fetchDashboardStats, fetchContacts, fetchNewsletters, fetchProducts, fetchQuotes, fetchFAQs, fetchOrders, fetchPages])
 
   useEffect(() => {
     if (isAuthenticated && !hasFetchedRef.current) {
@@ -351,21 +645,179 @@ export default function AdminPage() {
     }
   }, [isAuthenticated, fetchAllData])
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!isAuthenticated) {
+      hasFetchedRef.current = false
+    }
+  }, [isAuthenticated])
+
+  useEffect(() => {
+    if (isAuthenticated && selectedPageSlug) {
+      fetchPageDetail(selectedPageSlug)
+    }
+  }, [fetchPageDetail, isAuthenticated, selectedPageSlug])
+
+  useEffect(() => {
+    if (skipNextSectionHistoryRef.current) {
+      skipNextSectionHistoryRef.current = false
+    }
+  }, [pageSections])
+
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'pages' || !selectedPageSlug) return
+    const currentSnapshot = getPageSnapshot(pageForm, pageSections)
+    setIsPageDirty(currentSnapshot !== lastSavedPageSnapshotRef.current)
+  }, [activeTab, getPageSnapshot, isAuthenticated, pageForm, pageSections, selectedPageSlug])
+
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      activeTab !== 'pages' ||
+      !selectedPageSlug ||
+      !isPageDirty ||
+      selectedPage?.status === 'published'
+    ) {
+      return
+    }
+    const timer = setTimeout(() => {
+      void savePage('draft', { silent: true, refreshAfterSave: false })
+    }, 1200)
+    return () => clearTimeout(timer)
+  }, [activeTab, isAuthenticated, isPageDirty, selectedPage?.status, selectedPageSlug])
+
+  useEffect(() => {
+    if (isAuthenticated && showMediaLibrary) {
+      void fetchMediaLibrary()
+    }
+  }, [fetchMediaLibrary, isAuthenticated, showMediaLibrary])
+
+  useEffect(() => {
+    if (isAuthenticated && productDialogOpen) {
+      void fetchMediaLibrary()
+    }
+  }, [fetchMediaLibrary, isAuthenticated, productDialogOpen])
+
+  const handleUndoSections = () => {
+    if (sectionHistory.length === 0) return
+    const previous = sectionHistory[sectionHistory.length - 1]
+    setSectionHistory((prev) => prev.slice(0, -1))
+    setSectionFuture((prev) => [pageSections, ...prev].slice(0, 40))
+    setSectionsWithHistory(previous, { skipHistory: true })
+  }
+
+  const handleRedoSections = () => {
+    if (sectionFuture.length === 0) return
+    const next = sectionFuture[0]
+    setSectionFuture((prev) => prev.slice(1))
+    setSectionHistory((prev) => [...prev.slice(-39), pageSections])
+    setSectionsWithHistory(next, { skipHistory: true })
+  }
+
+  const moveSection = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    const cloned = [...pageSections]
+    const [moved] = cloned.splice(fromIndex, 1)
+    cloned.splice(toIndex, 0, moved)
+    setSectionsWithHistory(cloned)
+  }
+
+  const savePage = useCallback(
+    async (
+      status: 'draft' | 'published',
+      options?: { silent?: boolean; refreshAfterSave?: boolean }
+    ) => {
+      if (!selectedPageSlug) return
+
+      if (options?.silent) {
+        setIsAutoSavingPage(true)
+      } else {
+        setIsSavingPage(true)
+      }
+
+      try {
+        const sectionsJson = JSON.stringify(pageSections)
+        const res = await fetch(`/api/admin/pages/${selectedPageSlug}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...pageForm,
+            sections: sectionsJson,
+            status,
+          }),
+        })
+
+        const data = await res.json()
+        if (!data.success) {
+          if (!options?.silent) {
+            alert(data.error || 'Sayfa kaydedilirken bir hata olustu.')
+          }
+          return
+        }
+
+        const currentSnapshot = getPageSnapshot(pageForm, pageSections)
+        lastSavedPageSnapshotRef.current = currentSnapshot
+        setIsPageDirty(false)
+        setSelectedPage((prev) =>
+          prev
+            ? {
+                ...prev,
+                ...data.data,
+                status,
+                updatedAt:
+                  typeof data.data?.updatedAt === 'string'
+                    ? data.data.updatedAt
+                    : prev.updatedAt,
+              }
+            : prev
+        )
+
+        if (options?.silent) {
+          setAutoSaveMessage('Otomatik kaydedildi')
+          setTimeout(() => setAutoSaveMessage(''), 1800)
+        } else {
+          await fetchPages()
+          if (options?.refreshAfterSave !== false) {
+            await fetchPageDetail(selectedPageSlug)
+          }
+        }
+      } catch (error) {
+        console.error('Error saving page:', error)
+        if (!options?.silent) {
+          alert('Sayfa kaydedilirken bir hata olustu.')
+        }
+      } finally {
+        if (options?.silent) {
+          setIsAutoSavingPage(false)
+        } else {
+          setIsSavingPage(false)
+        }
+      }
+    },
+    [fetchPageDetail, fetchPages, getPageSnapshot, pageForm, pageSections, selectedPageSlug]
+  )
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true)
-      sessionStorage.setItem('adminAuth', 'true')
+    const result = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
+    })
+
+    if (result?.ok) {
       setLoginError('')
+      setPassword('')
     } else {
       setLoginError('Yanlış şifre. Lütfen tekrar deneyiniz.')
     }
   }
 
-  const handleLogout = () => {
-    setIsAuthenticated(false)
-    sessionStorage.removeItem('adminAuth')
-    hasFetchedRef.current = false
+  const handleLogout = async () => {
+    await signOut({ redirect: true, callbackUrl: '/giris' })
+  }
+
+  const handleSavePage = async (publish: boolean) => {
+    await savePage(publish ? 'published' : 'draft', { refreshAfterSave: true })
   }
 
   // Product CRUD operations
@@ -590,6 +1042,40 @@ export default function AdminPage() {
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   }
 
+  const updateProductField = (
+    key: keyof ProductFormState,
+    value: string | boolean
+  ) => {
+    setProductForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const uploadMediaAsset = useCallback(
+    async (
+      file: File,
+      options: {
+        folder: string
+        tags?: string[]
+      }
+    ) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', options.folder)
+      if (options.tags && options.tags.length > 0) {
+        formData.append('tags', options.tags.join(','))
+      }
+
+      const response = await fetch('/api/upload', { method: 'POST', body: formData })
+      const data = await response.json()
+
+      if (!data.success || typeof data.url !== 'string') {
+        throw new Error(data.error || 'Yukleme hatasi')
+      }
+
+      return data.url as string
+    },
+    []
+  )
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isMultiple = false) => {
     const files = e.target.files
     if (!files || files.length === 0) return
@@ -601,17 +1087,11 @@ export default function AdminPage() {
       const uploadedUrls: string[] = []
 
       for (const file of Array.from(files)) {
-        const formData = new FormData()
-        formData.append('file', file)
-
-        const res = await fetch('/api/upload', { method: 'POST', body: formData })
-        const data = await res.json()
-
-        if (data.success) {
-          uploadedUrls.push(data.url)
-        } else {
-          throw new Error(data.error || 'Yükleme hatası')
-        }
+        const uploadedUrl = await uploadMediaAsset(file, {
+          folder: 'oztelevi/products',
+          tags: ['product', productForm.category, isMultiple ? 'gallery' : 'main-image'],
+        })
+        uploadedUrls.push(uploadedUrl)
       }
 
       if (isMultiple) {
@@ -622,11 +1102,38 @@ export default function AdminPage() {
       } else {
         setProductForm((prev) => ({ ...prev, image: uploadedUrls[0] }))
       }
+      void fetchMediaLibrary()
     } catch (error) {
       console.error('Upload error:', error)
-      setUploadError('Dosya yüklenirken bir hata oluştu.')
+      setUploadError(error instanceof Error ? error.message : 'Dosya yüklenirken bir hata oluştu.')
     } finally {
       setIsUploading(false)
+    }
+  }
+
+  const handleUpdateMediaTags = async (asset: MediaAsset, tags: string[]) => {
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publicId: asset.publicId,
+          tags,
+        }),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        throw new Error(data.error || 'Etiketler guncellenemedi.')
+      }
+      setMediaLibrary((prev) =>
+        prev.map((item) =>
+          item.publicId === asset.publicId
+            ? { ...item, tags }
+            : item
+        )
+      )
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Etiketler guncellenemedi.')
     }
   }
 
@@ -697,6 +1204,33 @@ export default function AdminPage() {
   // ============================================
   // Login Screen
   // ============================================
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="py-10 text-center text-stone-600">Yükleniyor...</CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (status === 'authenticated' && session?.user?.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl font-medium">Yetkiniz yok</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleLogout} className="w-full">
+              Çıkış Yap
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 p-4">
@@ -708,6 +1242,17 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">E-posta</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@oztelevi.com"
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Şifre</Label>
                 <Input
@@ -790,6 +1335,13 @@ export default function AdminPage() {
             }`}>
             <HelpCircle className="w-4 h-4" />
             SSS
+          </button>
+          <button onClick={() => setActiveTab('pages')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeTab === 'pages' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            }`}>
+            <FileText className="w-4 h-4" />
+            Sayfa Yonetimi
           </button>
         </nav>
 
@@ -1416,243 +1968,741 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         )}
-      </main>
 
-      {/* Product Dialog */}
-      <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingProduct ? 'Ürün Düzenle' : 'Yeni Ürün Ekle'}</DialogTitle>
-            <DialogDescription>
-              Ürün bilgilerini girin. * ile işaretli alanlar zorunludur.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Ürün Adı *</Label>
-                <Input
-                  id="name"
-                  value={productForm.name}
-                  onChange={(e) => {
-                    setProductForm((prev) => ({ ...prev, name: e.target.value }))
-                    if (!editingProduct) {
-                      setProductForm((prev) => ({ ...prev, slug: generateSlug(e.target.value) }))
-                    }
-                  }}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="slug">Slug *</Label>
-                <Input
-                  id="slug"
-                  value={productForm.slug}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, slug: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Açıklama *</Label>
-              <Textarea
-                id="description"
-                value={productForm.description}
-                onChange={(e) => setProductForm((prev) => ({ ...prev, description: e.target.value }))}
-                rows={4}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="price">Fiyat *</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={productForm.price}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, price: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="comparePrice">Karşılaştırma Fiyatı</Label>
-                <Input
-                  id="comparePrice"
-                  type="number"
-                  value={productForm.comparePrice}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, comparePrice: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stock">Stok Miktarı</Label>
-                <Input
-                  id="stock"
-                  type="number"
-                  value={productForm.stock}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, stock: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="category">Kategori</Label>
-                <Select
-                  value={productForm.category}
-                  onValueChange={(value) => setProductForm((prev) => ({ ...prev, category: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="perdeler">Perdeler</SelectItem>
-                    <SelectItem value="tekstiller">Tekstiller</SelectItem>
-                    <SelectItem value="yatak-odasi">Yatak Odası</SelectItem>
-                    <SelectItem value="aksesuarlar">Aksesuarlar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="currency">Para Birimi</Label>
-                <Select
-                  value={productForm.currency}
-                  onValueChange={(value) => setProductForm((prev) => ({ ...prev, currency: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="TRY">TRY - Türk Lirası</SelectItem>
-                    <SelectItem value="USD">USD - Dolar</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Main Image Upload */}
-            <div className="space-y-2">
-              <Label>Ana Görsel</Label>
-              <div className="flex gap-4">
-                {productForm.image ? (
-                  <div className="relative w-24 h-24 rounded-lg overflow-hidden">
-                    <Image src={productForm.image} alt="Main" fill className="object-cover" />
+        {activeTab === 'pages' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Yonetilen Sayfalar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {pages.map((page) => (
                     <button
-                      onClick={() => setProductForm((prev) => ({ ...prev, image: '' }))}
-                      className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
+                      key={page.id}
+                      onClick={() => setSelectedPageSlug(page.slug)}
+                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                        selectedPageSlug === page.slug
+                          ? 'border-stone-900 bg-stone-900 text-white'
+                          : 'border-stone-200 bg-white hover:bg-stone-50'
+                      }`}
                     >
-                      <X className="w-3 h-3" />
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-sm">{page.title}</span>
+                        <Badge variant={page.status === 'published' ? 'default' : 'secondary'}>
+                          {page.status === 'published' ? 'Yayinda' : 'Taslak'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs opacity-70 mt-1">/{page.slug === 'anasayfa' ? '' : page.slug}</p>
                     </button>
-                  </div>
-                ) : (
-                  <label className="w-24 h-24 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-stone-400 transition-colors">
-                    <Upload className="w-6 h-6 text-stone-400" />
-                    <span className="text-xs text-stone-400 mt-1">Yükle</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleFileUpload(e, false)}
-                      disabled={isUploading}
-                    />
-                  </label>
-                )}
-              </div>
-            </div>
-
-            {/* Multiple Images Upload */}
-            <div className="space-y-2">
-              <Label>Ek Görseller</Label>
-              <div className="flex flex-wrap gap-3">
-                {productForm.images.map((img, index) => (
-                  <div key={index} className="relative w-20 h-20 rounded-lg overflow-hidden">
-                    <Image src={img} alt={`Image ${index + 1}`} fill className="object-cover" />
-                    <button
-                      onClick={() => removeImage(index)}
-                      className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                <label className="w-20 h-20 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-stone-400 transition-colors">
-                  <Plus className="w-5 h-5 text-stone-400" />
-                  <span className="text-xs text-stone-400 mt-1">Ekle</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handleFileUpload(e, true)}
-                    disabled={isUploading}
-                  />
-                </label>
-              </div>
-              {uploadError && <p className="text-sm text-red-500">{uploadError}</p>}
-            </div>
-
-            {/* Features */}
-            <div className="space-y-2">
-              <Label>Özellikler</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={newFeature}
-                  onChange={(e) => setNewFeature(e.target.value)}
-                  placeholder="Yeni özellik ekle..."
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
-                />
-                <Button type="button" variant="outline" onClick={addFeature}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-              {productForm.features.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {productForm.features.map((feature, index) => (
-                    <Badge key={index} variant="secondary" className="gap-1">
-                      {feature}
-                      <button onClick={() => removeFeature(index)} className="ml-1 hover:text-red-500">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
                   ))}
                 </div>
-              )}
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Checkboxes */}
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={productForm.inStock}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, inStock: e.target.checked }))}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">Stokta</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={productForm.featured}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, featured: e.target.checked }))}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">Öne Çıkan</span>
-              </label>
-            </div>
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-lg">Sayfa Icerigi Duzenle</CardTitle>
+                {selectedPage && (
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-stone-500">
+                    <p>Son guncelleme: {formatDate(selectedPage.updatedAt)}</p>
+                    {isAutoSavingPage && <Badge variant="secondary">Otomatik kaydediliyor...</Badge>}
+                    {!isAutoSavingPage && autoSaveMessage && (
+                      <Badge variant="outline">{autoSaveMessage}</Badge>
+                    )}
+                    {isPageDirty && <Badge variant="secondary">Kaydedilmemis degisiklik var</Badge>}
+                  </div>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {pageBaseline && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 space-y-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{pageBaseline.source}</Badge>
+                          <span className="text-xs text-stone-500">Canli referans icerik</span>
+                        </div>
+                        <h3 className="text-base font-medium text-stone-900">
+                          {pageBaseline.title || selectedPage?.title || 'Bu sayfa'} icin mevcut referans icerik gorunur durumda
+                        </h3>
+                        <p className="text-sm text-stone-600">
+                          {pageBaseline.description}
+                        </p>
+                      </div>
+                      <Button type="button" variant="outline" onClick={applyBaselineToEditor}>
+                        Referansi Editore Aktar
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-lg bg-white/70 p-3 border border-amber-100">
+                        <p className="text-xs uppercase tracking-wide text-stone-500 mb-1">Hero Baslik</p>
+                        <p className="font-medium text-stone-900">{pageBaseline.heroTitle}</p>
+                      </div>
+                      <div className="rounded-lg bg-white/70 p-3 border border-amber-100">
+                        <p className="text-xs uppercase tracking-wide text-stone-500 mb-1">Ana CTA</p>
+                        <p className="font-medium text-stone-900">
+                          {pageBaseline.heroCtaText} {'->'} {pageBaseline.heroCtaLink}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-wide text-stone-500">Referans bolumler</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {pageBaseline.sections.map((section, index) => (
+                          <div
+                            key={`${section.type}-${index}`}
+                            className="rounded-lg bg-white/70 p-3 border border-amber-100 text-sm"
+                          >
+                            <p className="font-medium text-stone-900">
+                              {index + 1}. {section.title || 'Adsiz Bolum'}
+                            </p>
+                            <p className="text-stone-500 mt-1 capitalize">{section.type}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>Sayfa Basligi</Label>
+                  <Input
+                    value={pageForm.title}
+                    onChange={(e) => setPageForm((prev) => ({ ...prev, title: e.target.value }))}
+                    placeholder="Sayfa basligi"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>SEO Baslik</Label>
+                    <Input
+                      value={pageForm.seoTitle}
+                      onChange={(e) => setPageForm((prev) => ({ ...prev, seoTitle: e.target.value }))}
+                      placeholder="SEO baslik"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>SEO Aciklama</Label>
+                    <Input
+                      value={pageForm.seoDescription}
+                      onChange={(e) => setPageForm((prev) => ({ ...prev, seoDescription: e.target.value }))}
+                      placeholder="SEO aciklama"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-lg font-medium mb-4">Hero Bölümü</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Hero Başlık</Label>
+                      <Input
+                        value={pageForm.heroTitle}
+                        onChange={(e) => setPageForm((prev) => ({ ...prev, heroTitle: e.target.value }))}
+                        placeholder="Ana başlık"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Hero Alt Başlık</Label>
+                      <Input
+                        value={pageForm.heroSubtitle}
+                        onChange={(e) => setPageForm((prev) => ({ ...prev, heroSubtitle: e.target.value }))}
+                        placeholder="Alt başlık"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Hero Görseli</Label>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Input
+                            value={pageForm.heroImage}
+                            onChange={(e) => setPageForm((prev) => ({ ...prev, heroImage: e.target.value }))}
+                            placeholder="Görsel URL'si veya yukarıdan yükle"
+                          />
+                        </div>
+                        <label className="cursor-pointer bg-stone-100 hover:bg-stone-200 px-4 py-2 rounded-lg flex items-center gap-2 transition">
+                          <Upload className="w-4 h-4" />
+                          <span className="text-sm">Yükle</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0]
+                              if (!file) return
+                              setIsUploading(true)
+                              try {
+                                const uploadedUrl = await uploadMediaAsset(file, {
+                                  folder: `oztelevi/pages/${selectedPageSlug}`,
+                                  tags: ['page', selectedPageSlug, 'hero'],
+                                })
+                                setPageForm((prev) => ({ ...prev, heroImage: uploadedUrl }))
+                              } catch (error) {
+                                alert(error instanceof Error ? error.message : 'Yukleme hatasi')
+                              } finally {
+                                setIsUploading(false)
+                              }
+                            }}
+                            disabled={isUploading}
+                          />
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowMediaLibrary((prev) => !prev)}
+                        >
+                          Kutuphane
+                        </Button>
+                      </div>
+                      {pageForm.heroImage && (
+                        <div className="mt-2 relative w-32 h-32 rounded-lg overflow-hidden border">
+                          <img src={pageForm.heroImage} alt="Önizleme" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <p className="text-xs text-stone-500">Ana sayfanın en üstündeki büyük görsel</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>CTA Buton Metni</Label>
+                      <Input
+                        value={pageForm.heroCtaText}
+                        onChange={(e) => setPageForm((prev) => ({ ...prev, heroCtaText: e.target.value }))}
+                        placeholder="Tıklayın"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2 mt-4">
+                    <Label>CTA Buton Link</Label>
+                    <Input
+                      value={pageForm.heroCtaLink}
+                      onChange={(e) => setPageForm((prev) => ({ ...prev, heroCtaLink: e.target.value }))}
+                      placeholder="/iletisim"
+                    />
+                  </div>
+                </div>
+
+                {showMediaLibrary && (
+                  <div className="border rounded-lg p-4 bg-stone-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium">Medya Kutuphanesi</h4>
+                      <Button variant="ghost" size="sm" onClick={() => setShowMediaLibrary(false)}>
+                        Kapat
+                      </Button>
+                    </div>
+                    <div className="mb-3 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm">
+                      <p className="font-medium text-stone-900">
+                        Medya depolama: {mediaStorageMode === 'cloudinary' ? 'Cloudinary' : 'Local fallback'}
+                      </p>
+                      {mediaStorageWarning && (
+                        <p className="mt-1 text-amber-700">{mediaStorageWarning}</p>
+                      )}
+                    </div>
+                    <MediaLibraryGrid
+                      title="Gorseller"
+                      mediaLibrary={mediaLibrary}
+                      isMediaLoading={isMediaLoading}
+                      onRefresh={() => void fetchMediaLibrary()}
+                      onDelete={handleDeleteMedia}
+                      onUpdateTags={handleUpdateMediaTags}
+                      onSelectHero={applyMediaToHero}
+                    />
+                  </div>
+                )}
+
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium">Sayfa Bölümleri</h3>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUndoSections}
+                        disabled={sectionHistory.length === 0}
+                      >
+                        Geri Al
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRedoSections}
+                        disabled={sectionFuture.length === 0}
+                      >
+                        Ileri Al
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowPreview(!showPreview)}
+                      >
+                        {showPreview ? 'Düzenlemeye Dön' : 'Önizleme'}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {showPreview ? (
+                    <div className="border rounded-lg p-4 bg-stone-50 max-h-96 overflow-y-auto">
+                      <h4 className="font-medium mb-2">Önizleme</h4>
+                      {pageForm.heroTitle && (
+                        <div className="mb-4 p-3 bg-blue-50 rounded">
+                          <strong>Hero Başlık:</strong> {pageForm.heroTitle}
+                          {pageForm.heroSubtitle && <div>{pageForm.heroSubtitle}</div>}
+                          {pageForm.heroImage && (
+                            <img src={pageForm.heroImage} alt="Hero" className="w-32 h-32 object-cover mt-2 rounded" />
+                          )}
+                        </div>
+                      )}
+                      {pageSections.map((section, i) => (
+                        <div key={i} className="mb-2 p-2 bg-stone-100 rounded text-sm">
+                          <strong>{section.type}:</strong> {section.title || section.content?.slice(0, 50)}
+                        </div>
+                      ))}
+                      {!pageForm.heroTitle && pageSections.length === 0 && (
+                        <p className="text-stone-500">Henüz içerik eklenmedi</p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newSection: PageSection = { type: 'text', title: '', content: '' }
+                            setSectionsWithHistory([...pageSections, newSection])
+                          }}
+                        >
+                          + Metin
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newSection: PageSection = { type: 'image', title: '', image: '' }
+                            setSectionsWithHistory([...pageSections, newSection])
+                          }}
+                        >
+                          + Görsel
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newSection: PageSection = { type: 'cta', title: '', content: '', link: '', linkText: 'Tıklayın' }
+                            setSectionsWithHistory([...pageSections, newSection])
+                          }}
+                        >
+                          + CTA
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newSection: PageSection = { type: 'features', title: '', items: ['', '', ''] }
+                            setSectionsWithHistory([...pageSections, newSection])
+                          }}
+                        >
+                          + Özellikler
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newSection: PageSection = { type: 'gallery', title: '', items: [] }
+                            setSectionsWithHistory([...pageSections, newSection])
+                          }}
+                        >
+                          + Galeri
+                        </Button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {pageSections.map((section, index) => (
+                          <div
+                            key={index}
+                            className="border rounded-lg p-4 bg-stone-50"
+                            draggable
+                            onDragStart={() => setDraggingSectionIndex(index)}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={() => {
+                              if (draggingSectionIndex === null) return
+                              moveSection(draggingSectionIndex, index)
+                              setDraggingSectionIndex(null)
+                            }}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="font-medium capitalize">{section.type} Bölümü</span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={index === 0}
+                                  onClick={() => moveSection(index, index - 1)}
+                                >
+                                  ↑
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={index === pageSections.length - 1}
+                                  onClick={() => moveSection(index, index + 1)}
+                                >
+                                  ↓
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const newSections = [...pageSections]
+                                    newSections.splice(index, 1)
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                >
+                                  Sil
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            {section.type === 'text' && (
+                              <>
+                                <Input
+                                  className="mb-2"
+                                  placeholder="Başlık"
+                                  value={section.title || ''}
+                                  onChange={(e) => {
+                                    const newSections = [...pageSections]
+                                    newSections[index].title = e.target.value
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                />
+                                <Textarea
+                                  placeholder="Metin içeriği"
+                                  rows={4}
+                                  value={section.content || ''}
+                                  onChange={(e) => {
+                                    const newSections = [...pageSections]
+                                    newSections[index].content = e.target.value
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                />
+                              </>
+                            )}
+
+                            {section.type === 'image' && (
+                              <>
+                                <Input
+                                  className="mb-2"
+                                  placeholder="Başlık"
+                                  value={section.title || ''}
+                                  onChange={(e) => {
+                                    const newSections = [...pageSections]
+                                    newSections[index].title = e.target.value
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                />
+                                <div className="flex gap-2">
+                                  <Input
+                                    placeholder="Görsel URL"
+                                    value={section.image || ''}
+                                    onChange={(e) => {
+                                      const newSections = [...pageSections]
+                                      newSections[index].image = e.target.value
+                                      setSectionsWithHistory(newSections)
+                                    }}
+                                  />
+                                  <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded flex items-center">
+                                    <Upload className="w-4 h-4" />
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0]
+                                        if (!file) return
+                                        setIsUploading(true)
+                                        try {
+                                          const uploadedUrl = await uploadMediaAsset(file, {
+                                            folder: `oztelevi/pages/${selectedPageSlug}`,
+                                            tags: ['page', selectedPageSlug, 'section-image'],
+                                          })
+                                          const newSections = [...pageSections]
+                                          newSections[index].image = uploadedUrl
+                                          setSectionsWithHistory(newSections)
+                                        } catch (error) {
+                                          alert(error instanceof Error ? error.message : 'Yukleme hatasi')
+                                        } finally {
+                                          setIsUploading(false)
+                                        }
+                                      }}
+                                      disabled={isUploading}
+                                    />
+                                  </label>
+                                </div>
+                                {section.image && (
+                                  <img src={section.image} alt="Önizleme" className="w-32 h-32 object-cover mt-2 rounded" />
+                                )}
+                              </>
+                            )}
+
+                            {section.type === 'cta' && (
+                              <>
+                                <Input
+                                  className="mb-2"
+                                  placeholder="Başlık"
+                                  value={section.title || ''}
+                                  onChange={(e) => {
+                                    const newSections = [...pageSections]
+                                    newSections[index].title = e.target.value
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                />
+                                <Input
+                                  className="mb-2"
+                                  placeholder="Açıklama"
+                                  value={section.content || ''}
+                                  onChange={(e) => {
+                                    const newSections = [...pageSections]
+                                    newSections[index].content = e.target.value
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Input
+                                    placeholder="Buton metni"
+                                    value={section.linkText || ''}
+                                    onChange={(e) => {
+                                      const newSections = [...pageSections]
+                                      newSections[index].linkText = e.target.value
+                                      setSectionsWithHistory(newSections)
+                                    }}
+                                  />
+                                  <Input
+                                    placeholder="Link (/iletisim)"
+                                    value={section.link || ''}
+                                    onChange={(e) => {
+                                      const newSections = [...pageSections]
+                                      newSections[index].link = e.target.value
+                                      setSectionsWithHistory(newSections)
+                                    }}
+                                  />
+                                </div>
+                              </>
+                            )}
+
+                            {section.type === 'features' && (
+                              <>
+                                <Input
+                                  className="mb-2"
+                                  placeholder="Başlık"
+                                  value={section.title || ''}
+                                  onChange={(e) => {
+                                    const newSections = [...pageSections]
+                                    newSections[index].title = e.target.value
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                />
+                                <Textarea
+                                  className="mb-2"
+                                  placeholder="Açıklama"
+                                  rows={3}
+                                  value={section.content || ''}
+                                  onChange={(e) => {
+                                    const newSections = [...pageSections]
+                                    newSections[index].content = e.target.value
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                />
+                                <div className="space-y-2">
+                                  {(section.items || ['', '', '']).map((item: string, i: number) => (
+                                    <div key={i} className="flex gap-2">
+                                      <Input
+                                        placeholder={`Özellik ${i + 1}`}
+                                        value={item || ''}
+                                        onChange={(e) => {
+                                          const newSections = [...pageSections]
+                                          if (!newSections[index].items) newSections[index].items = ['', '', '']
+                                          newSections[index].items[i] = e.target.value
+                                          setSectionsWithHistory(newSections)
+                                        }}
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          const newSections = [...pageSections]
+                                          newSections[index].items = (newSections[index].items || []).filter((_: any, xi: number) => xi !== i)
+                                          setSectionsWithHistory(newSections)
+                                        }}
+                                      >
+                                        X
+                                      </Button>
+                                    </div>
+                                  ))}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const newSections = [...pageSections]
+                                      if (!newSections[index].items) newSections[index].items = []
+                                      newSections[index].items = [...newSections[index].items, '']
+                                      setSectionsWithHistory(newSections)
+                                    }}
+                                  >
+                                    + Özellik Ekle
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+
+                            {section.type === 'gallery' && (
+                              <>
+                                <Input
+                                  className="mb-2"
+                                  placeholder="Başlık"
+                                  value={section.title || ''}
+                                  onChange={(e) => {
+                                    const newSections = [...pageSections]
+                                    newSections[index].title = e.target.value
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                />
+                                <Textarea
+                                  className="mb-2"
+                                  placeholder="Açıklama"
+                                  rows={3}
+                                  value={section.content || ''}
+                                  onChange={(e) => {
+                                    const newSections = [...pageSections]
+                                    newSections[index].content = e.target.value
+                                    setSectionsWithHistory(newSections)
+                                  }}
+                                />
+                                <div className="grid grid-cols-4 gap-2 mb-2">
+                                  {(section.items || []).map((img: string, i: number) => (
+                                    <div key={i} className="relative">
+                                      <img src={img} alt={`Gallery ${i}`} className="w-full h-20 object-cover rounded" />
+                                      <button
+                                        onClick={() => {
+                                          const newSections = [...pageSections]
+                                          newSections[index].items = (newSections[index].items || []).filter((_: any, xi: number) => xi !== i)
+                                          setSectionsWithHistory(newSections)
+                                        }}
+                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs"
+                                      >
+                                        X
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                                <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded inline-flex items-center gap-2">
+                                  <Upload className="w-4 h-4" />
+                                  <span className="text-sm">Görsel Ekle</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    multiple
+                                    onChange={async (e) => {
+                                      const files = e.target.files
+                                      if (!files) return
+                                      setIsUploading(true)
+                                      try {
+                                        for (const file of Array.from(files)) {
+                                          const uploadedUrl = await uploadMediaAsset(file, {
+                                            folder: `oztelevi/pages/${selectedPageSlug}`,
+                                            tags: ['page', selectedPageSlug, 'gallery'],
+                                          })
+                                          const newSections = [...pageSections]
+                                          if (!newSections[index].items) newSections[index].items = []
+                                          newSections[index].items = [...newSections[index].items, uploadedUrl]
+                                          setSectionsWithHistory(newSections)
+                                        }
+                                      } catch (error) {
+                                        alert(error instanceof Error ? error.message : 'Yukleme hatasi')
+                                      } finally {
+                                        setIsUploading(false)
+                                      }
+                                    }}
+                                    disabled={isUploading}
+                                  />
+                                </label>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                        {pageSections.length === 0 && (
+                          <p className="text-stone-500 text-center py-8">
+                            Henüz bölüm eklenmedi. Yukarıdaki butonlardan bölüm ekleyebilirsiniz.
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>HTML Icerik</Label>
+                  <Textarea
+                    value={pageForm.htmlContent}
+                    onChange={(e) => setPageForm((prev) => ({ ...prev, htmlContent: e.target.value }))}
+                    rows={16}
+                    placeholder="Bu alana tam sayfa HTML icerigi girebilirsiniz"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>JSON-LD (opsiyonel)</Label>
+                  <Textarea
+                    value={pageForm.schemaJson}
+                    onChange={(e) => setPageForm((prev) => ({ ...prev, schemaJson: e.target.value }))}
+                    rows={6}
+                    placeholder='{"@context":"https://schema.org"}'
+                  />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" onClick={() => handleSavePage(false)} disabled={isSavingPage}>
+                    Taslak Kaydet
+                  </Button>
+                  <Button onClick={() => handleSavePage(true)} disabled={isSavingPage}>
+                    {isSavingPage ? 'Kaydediliyor...' : 'Yayina Al'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+        )}
+      </main>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setProductDialogOpen(false)}>İptal</Button>
-            <Button onClick={editingProduct ? handleUpdateProduct : handleCreateProduct} disabled={isUploading}>
-              {isUploading ? 'Yükleniyor...' : editingProduct ? 'Güncelle' : 'Ekle'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProductFormDialog
+        open={productDialogOpen}
+        onOpenChange={setProductDialogOpen}
+        editingProduct={editingProduct ? { id: editingProduct.id } : null}
+        isUploading={isUploading}
+        uploadError={uploadError}
+        mediaStorageMode={mediaStorageMode}
+        mediaStorageWarning={mediaStorageWarning}
+        form={productForm}
+        newFeature={newFeature}
+        fields={PRODUCT_FORM_FIELDS}
+        mediaLibrary={mediaLibrary}
+        isMediaLoading={isMediaLoading}
+        onRefreshMedia={() => void fetchMediaLibrary()}
+        onDeleteMedia={handleDeleteMedia}
+        onUpdateMediaTags={handleUpdateMediaTags}
+        onSelectMediaMain={(url) => applyMediaToProduct(url, 'main')}
+        onSelectMediaGallery={(url) => applyMediaToProduct(url, 'gallery')}
+        onFieldChange={updateProductField}
+        onAutoSlug={(name) => updateProductField('slug', generateSlug(name))}
+        onFileUpload={handleFileUpload}
+        onRemoveImage={removeImage}
+        onFeatureInputChange={setNewFeature}
+        onAddFeature={addFeature}
+        onRemoveFeature={removeFeature}
+        onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
+      />
 
       {/* Delete Product Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

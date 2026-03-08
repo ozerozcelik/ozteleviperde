@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -35,11 +35,76 @@ model User {
   orders        Order[]
   favorites     Favorite[]
   appointments  Appointment[]
+  updatedPages  ContentPage[]
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@map("users")
+}
+
+model ContentPage {
+  id             String               @id @default(cuid())
+  slug           String               @unique
+  title          String
+  status         String               @default("draft") // draft, published
+  seoTitle       String?
+  seoDescription String?
+  
+  // Hero section
+  heroTitle      String?
+  heroSubtitle   String?
+  heroImage      String?
+  heroCtaText   String?
+  heroCtaLink   String?
+  
+  // Section content (JSON for flexibility)
+  sections       String?              // JSON array of section data
+  
+  // Legacy HTML content (still supported)
+  htmlContent    String?
+  schemaJson     String?
+  
+  updatedById    String?
+  updatedBy      User?                @relation(fields: [updatedById], references: [id])
+  publishedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  versions       ContentPageVersion[]
+
+  @@map("content_pages")
+}
+
+model ContentPageVersion {
+  id             String      @id @default(cuid())
+  pageId         String
+  page           ContentPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  version        Int
+  title          String
+  status         String
+  seoTitle       String?
+  seoDescription String?
+  heroTitle      String?
+  heroSubtitle   String?
+  heroImage      String?
+  heroCtaText   String?
+  heroCtaLink   String?
+  sections       String?
+  htmlContent    String?
+  schemaJson     String?
+  createdById    String?
+  createdAt      DateTime    @default(now())
+
+  @@unique([pageId, version])
+  @@map("content_page_versions")
+}
+
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
 }
 
 // NextAuth Account

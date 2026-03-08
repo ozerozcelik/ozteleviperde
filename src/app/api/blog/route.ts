@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/api-auth'
+
+function parseStringArray(value: string | null): string[] {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 // Blog yazılarını listele
 export async function GET(request: NextRequest) {
@@ -28,7 +39,7 @@ export async function GET(request: NextRequest) {
       // JSON alanlarını parse et
       const parsedBlog = {
         ...blog,
-        tags: blog.tags ? JSON.parse(blog.tags) : [],
+        tags: parseStringArray(blog.tags),
       }
 
       return NextResponse.json({
@@ -61,7 +72,7 @@ export async function GET(request: NextRequest) {
     // JSON alanlarını parse et
     const parsedBlogs = blogs.map((b) => ({
       ...b,
-      tags: b.tags ? JSON.parse(b.tags) : [],
+      tags: parseStringArray(b.tags),
     }))
 
     return NextResponse.json({
@@ -85,6 +96,9 @@ export async function GET(request: NextRequest) {
 // Yeni blog yazısı ekle (admin için)
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
     const {
       title,
@@ -152,6 +166,9 @@ export async function POST(request: NextRequest) {
 // Blog yazısı güncelle (admin için)
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
     const { id, ...data } = body
 
@@ -198,6 +215,9 @@ export async function PUT(request: NextRequest) {
 // Blog yazısı sil (admin için)
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 

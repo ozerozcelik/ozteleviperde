@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
+import { enforceRateLimit } from '@/lib/request-security'
 
 // Admin kullanıcı bilgileri
-const ADMIN_EMAIL = 'admin@oztelevi.com'
-const ADMIN_PASSWORD = 'Admin123!' // Güvenli varsayılan şifre
-const ADMIN_NAME = 'ÖzTelevi Admin'
+const ADMIN_EMAIL = process.env.ADMIN_INIT_EMAIL
+const ADMIN_PASSWORD = process.env.ADMIN_INIT_PASSWORD
+const ADMIN_NAME = process.env.ADMIN_INIT_NAME || 'ÖzTelevi Admin'
+const ADMIN_SETUP_KEY = process.env.ADMIN_SETUP_KEY
 
 // GET - Admin durumunu kontrol et
 export async function GET() {
@@ -30,26 +32,35 @@ export async function GET() {
 // POST - İlk admin kullanıcısını oluştur
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitError = await enforceRateLimit(request, {
+      key: 'admin-init',
+      limit: 3,
+      windowMs: 15 * 60 * 1000,
+    })
+    if (rateLimitError) return rateLimitError
+
+    if (!ADMIN_SETUP_KEY || !ADMIN_EMAIL || !ADMIN_PASSWORD) {
+      return NextResponse.json(
+        { error: 'Admin init için gerekli ortam değişkenleri eksik.' },
+        { status: 500 }
+      )
+    }
+
     const body = await request.json()
     const { setupKey } = body
 
-    // Basit güvenlik kontrolü
-    // Gerçek uygulamada bu daha güvenli olmalı
-    if (setupKey !== 'oztelevi-setup-2024') {
+    if (setupKey !== ADMIN_SETUP_KEY) {
       return NextResponse.json(
         { error: 'Geçersiz kurulum anahtarı' },
         { status: 401 }
       )
     }
 
-    // Mevcut admin kontrolü
-    const existingAdmin = await db.user.findUnique({
-      where: { email: ADMIN_EMAIL },
-    })
+    const existingAdminCount = await db.user.count({ where: { role: 'admin' } })
 
-    if (existingAdmin) {
+    if (existingAdminCount > 0) {
       return NextResponse.json(
-        { error: 'Admin kullanıcı zaten mevcut', email: ADMIN_EMAIL },
+        { error: 'Admin kullanıcı zaten mevcut' },
         { status: 400 }
       )
     }
@@ -81,8 +92,7 @@ export async function POST(request: NextRequest) {
         email: admin.email,
         name: admin.name,
       },
-      defaultPassword: ADMIN_PASSWORD,
-      warning: 'Lütfen ilk girişten sonra şifreyi değiştirin!',
+      warning: 'Admin kullanıcı oluşturuldu.',
     })
   } catch (error) {
     console.error('Admin oluşturma hatası:', error)

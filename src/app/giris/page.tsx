@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -14,8 +15,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
+import ManagedPage from '@/components/ManagedPage'
+import { usePageContent } from '@/hooks/usePageContent'
 
-export default function GirisPage() {
+function GirisPageContent() {
+  const { content: managedPage } = usePageContent('giris')
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const { status } = useSession()
@@ -143,6 +148,19 @@ export default function GirisPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (managedPage?.htmlContent || managedPage?.heroTitle) {
+    return <ManagedPage 
+      html={managedPage.htmlContent} 
+      schemaJson={managedPage.schemaJson}
+      heroTitle={managedPage.heroTitle}
+      heroSubtitle={managedPage.heroSubtitle}
+      heroImage={managedPage.heroImage}
+      heroCtaText={managedPage.heroCtaText}
+      heroCtaLink={managedPage.heroCtaLink}
+      sections={managedPage.sections}
+    />
   }
 
   if (status === 'loading') {
@@ -449,5 +467,19 @@ export default function GirisPage() {
         </footer>
       </div>
     </div>
+  )
+}
+
+export default function GirisPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <GirisPageContent />
+    </Suspense>
   )
 }

@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from './db'
 import { comparePassword } from './auth'
+import { enforceIdentifierRateLimit } from './request-security'
 
 // Türkçe hata mesajları
 const ERROR_MESSAGES: Record<string, string> = {
@@ -40,8 +41,18 @@ const authOptions: NextAuthOptions = {
           throw new Error('E-posta ve şifre gereklidir')
         }
 
+        const normalizedEmail = credentials.email.toLowerCase().trim()
+        const rateLimit = await enforceIdentifierRateLimit(`login:${normalizedEmail}`, {
+          limit: 8,
+          windowMs: 15 * 60 * 1000,
+        })
+
+        if (!rateLimit.ok) {
+          throw new Error('Çok fazla giriş denemesi. Lütfen daha sonra tekrar deneyin.')
+        }
+
         const user = await db.user.findUnique({
-          where: { email: credentials.email.toLowerCase() },
+          where: { email: normalizedEmail },
         })
 
         if (!user || !user.password) {
@@ -78,8 +89,9 @@ const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
+        const role = 'role' in user ? (user.role as string | undefined) : undefined
         token.id = user.id
-        token.role = user.role
+        token.role = role || 'customer'
         token.name = user.name
         token.email = user.email
         token.image = user.image
@@ -94,9 +106,9 @@ const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.id as string
-        session.user.role = token.role as string
+        session.user.role = (token.role as string) || 'customer'
         session.user.name = token.name as string
         session.user.email = token.email as string
         session.user.image = token.image as string
@@ -110,15 +122,7 @@ const authOptions: NextAuthOptions = {
       return false
     },
   },
-  events: {
-    async signIn({ user }) {
-      console.log(`Kullanıcı giriş yaptı: ${user.email}`)
-    },
-    async signOut() {
-      console.log('Kullanıcı çıkış yaptı')
-    },
-  },
-  secret: process.env.NEXTAUTH_SECRET || 'oztelevi-secret-key-2024',
+  secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
 }
 

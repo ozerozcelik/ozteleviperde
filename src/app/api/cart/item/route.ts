@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 import { db } from '@/lib/db'
 import { cookies } from 'next/headers'
+import authOptions from '@/lib/auth-options'
+import { enforceTrustedOrigin } from '@/lib/request-security'
 
 // Session ID cookie name
 const SESSION_ID_COOKIE = 'cart_session_id'
@@ -10,11 +13,20 @@ function generateSessionId(): string {
   return `session_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
 }
 
+async function getCurrentUserId(): Promise<string | null> {
+  const session = await getServerSession(authOptions)
+  return session?.user?.id ?? null
+}
+
 // POST /api/cart/item - Add item to cart
 export async function POST(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
     const body = await request.json()
-    const { productId, quantity = 1, userId, notes } = body
+    const { productId, quantity = 1, notes } = body
+    const userId = await getCurrentUserId()
 
     if (!productId) {
       return NextResponse.json(
@@ -51,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find or create cart
-    let cart = null
+    let cart: any = null
 
     if (userId) {
       cart = await db.cart.findFirst({
@@ -144,8 +156,14 @@ export async function POST(request: NextRequest) {
 // PUT /api/cart/item - Update item quantity
 export async function PUT(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
     const body = await request.json()
     const { itemId, quantity } = body
+    const userId = await getCurrentUserId()
+    const cookieStore = await cookies()
+    const sessionId = cookieStore.get(SESSION_ID_COOKIE)?.value
 
     if (!itemId || quantity === undefined) {
       return NextResponse.json(
@@ -164,13 +182,24 @@ export async function PUT(request: NextRequest) {
     // Get cart item
     const cartItem = await db.cartItem.findUnique({
       where: { id: itemId },
-      include: { product: true },
+      include: { product: true, cart: true },
     })
 
     if (!cartItem) {
       return NextResponse.json(
         { success: false, error: 'Ürün sepette bulunamadı.' },
         { status: 404 }
+      )
+    }
+
+    const canAccess = userId
+      ? cartItem.cart.userId === userId
+      : !!sessionId && cartItem.cart.sessionId === sessionId
+
+    if (!canAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Bu sepet ürünü için yetkiniz yok.' },
+        { status: 403 }
       )
     }
 
@@ -206,8 +235,14 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/cart/item - Remove item from cart
 export async function DELETE(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
     const { searchParams } = new URL(request.url)
     const itemId = searchParams.get('itemId')
+    const userId = await getCurrentUserId()
+    const cookieStore = await cookies()
+    const sessionId = cookieStore.get(SESSION_ID_COOKIE)?.value
 
     if (!itemId) {
       return NextResponse.json(
@@ -219,12 +254,24 @@ export async function DELETE(request: NextRequest) {
     // Check if item exists
     const cartItem = await db.cartItem.findUnique({
       where: { id: itemId },
+      include: { cart: true },
     })
 
     if (!cartItem) {
       return NextResponse.json(
         { success: false, error: 'Ürün sepette bulunamadı.' },
         { status: 404 }
+      )
+    }
+
+    const canAccess = userId
+      ? cartItem.cart.userId === userId
+      : !!sessionId && cartItem.cart.sessionId === sessionId
+
+    if (!canAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Bu sepet ürünü için yetkiniz yok.' },
+        { status: 403 }
       )
     }
 

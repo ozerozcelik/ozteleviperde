@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 import { db } from '@/lib/db'
+import { cookies } from 'next/headers'
+import authOptions from '@/lib/auth-options'
+import { enforceTrustedOrigin } from '@/lib/request-security'
 
 // POST /api/coupon - Validate and apply coupon code
 export async function POST(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id
+    const cookieStore = await cookies()
+    const sessionId = cookieStore.get('cart_session_id')?.value
+
     const body = await request.json()
     const { code, cartId, subtotal } = body
 
@@ -70,15 +82,32 @@ export async function POST(request: NextRequest) {
 
     // If cartId provided, apply coupon to cart
     if (cartId) {
+      const cart = await db.cart.findUnique({
+        where: { id: cartId },
+        select: { id: true, userId: true, sessionId: true },
+      })
+
+      if (!cart) {
+        return NextResponse.json(
+          { success: false, error: 'Sepet bulunamadı.' },
+          { status: 404 }
+        )
+      }
+
+      const canAccess = userId
+        ? cart.userId === userId
+        : !!sessionId && cart.sessionId === sessionId
+
+      if (!canAccess) {
+        return NextResponse.json(
+          { success: false, error: 'Bu sepet için yetkiniz yok.' },
+          { status: 403 }
+        )
+      }
+
       await db.cart.update({
         where: { id: cartId },
         data: { couponId: coupon.id },
-      })
-
-      // Increment usage count
-      await db.coupon.update({
-        where: { id: coupon.id },
-        data: { usedCount: { increment: 1 } },
       })
     }
 

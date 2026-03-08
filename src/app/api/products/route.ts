@@ -1,5 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/api-auth'
+
+const productCreateSchema = z.object({
+  name: z.string().trim().min(1, 'Urun adi zorunludur.'),
+  slug: z.string().trim().min(1, 'Slug zorunludur.'),
+  description: z.string().trim().min(1, 'Aciklama zorunludur.'),
+  price: z.union([z.number(), z.string()]),
+  comparePrice: z.union([z.number(), z.string()]).optional().nullable(),
+  currency: z.string().trim().default('TRY'),
+  category: z.string().trim().min(1, 'Kategori zorunludur.'),
+  image: z.string().optional().nullable(),
+  images: z.array(z.string()).optional().nullable(),
+  features: z.array(z.string()).optional().nullable(),
+  inStock: z.boolean().optional(),
+  stock: z.union([z.number(), z.string()]).optional(),
+  featured: z.boolean().optional(),
+  order: z.number().optional(),
+})
+
+const productUpdateSchema = productCreateSchema.partial().extend({
+  id: z.string().trim().min(1, 'Urun ID gerekli.'),
+})
+
+function toNumber(value: unknown) {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') return Number(value)
+  return NaN
+}
 
 // Ürünleri listele
 export async function GET(request: NextRequest) {
@@ -87,35 +116,49 @@ export async function GET(request: NextRequest) {
 // Yeni ürün ekle (admin için)
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const {
-      name,
-      slug,
-      description,
-      price,
-      comparePrice,
-      currency,
-      category,
-      image,
-      images,
-      features,
-      inStock,
-      stock,
-      featured,
-      order,
-    } = body
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
 
-    // Validasyon
-    if (!name || !slug || !description || price === undefined || !category) {
+    const rawBody = await request.json()
+    const parsedBody = productCreateSchema.safeParse(rawBody)
+    if (!parsedBody.success) {
       return NextResponse.json(
-        { error: 'Ürün adı, slug, açıklama, fiyat ve kategori zorunludur.' },
+        { error: parsedBody.error.issues[0]?.message || 'Gecersiz urun verisi.' },
+        { status: 400 }
+      )
+    }
+
+    const payload = parsedBody.data
+    const parsedPrice = toNumber(payload.price)
+    const parsedComparePrice =
+      payload.comparePrice === undefined || payload.comparePrice === null || payload.comparePrice === ''
+        ? null
+        : toNumber(payload.comparePrice)
+    const parsedStock =
+      payload.stock === undefined ? 0 : Math.max(0, Math.trunc(toNumber(payload.stock)))
+
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      return NextResponse.json(
+        { error: 'Fiyat alani gecersiz.' },
+        { status: 400 }
+      )
+    }
+    if (parsedComparePrice !== null && (Number.isNaN(parsedComparePrice) || parsedComparePrice < 0)) {
+      return NextResponse.json(
+        { error: 'Karsilastirma fiyati gecersiz.' },
+        { status: 400 }
+      )
+    }
+    if (Number.isNaN(parsedStock)) {
+      return NextResponse.json(
+        { error: 'Stok alani gecersiz.' },
         { status: 400 }
       )
     }
 
     // Slug benzersiz mi kontrol et
     const existing = await db.product.findUnique({
-      where: { slug },
+      where: { slug: payload.slug },
     })
 
     if (existing) {
@@ -127,20 +170,20 @@ export async function POST(request: NextRequest) {
 
     const product = await db.product.create({
       data: {
-        name,
-        slug,
-        description,
-        price: parseFloat(price),
-        comparePrice: comparePrice ? parseFloat(comparePrice) : null,
-        currency: currency || 'TRY',
-        category,
-        image: image || null,
-        images: images ? JSON.stringify(images) : null,
-        features: features ? JSON.stringify(features) : null,
-        inStock: inStock !== undefined ? inStock : true,
-        stock: stock !== undefined ? parseInt(stock) : 0,
-        featured: featured || false,
-        order: order || 0,
+        name: payload.name,
+        slug: payload.slug,
+        description: payload.description,
+        price: parsedPrice,
+        comparePrice: parsedComparePrice,
+        currency: payload.currency || 'TRY',
+        category: payload.category,
+        image: payload.image?.trim() ? payload.image.trim() : null,
+        images: payload.images?.length ? JSON.stringify(payload.images) : null,
+        features: payload.features?.length ? JSON.stringify(payload.features) : null,
+        inStock: payload.inStock !== undefined ? payload.inStock : true,
+        stock: parsedStock,
+        featured: payload.featured || false,
+        order: payload.order || 0,
       },
     })
 
@@ -161,15 +204,18 @@ export async function POST(request: NextRequest) {
 // Ürün güncelle (admin için)
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { id, ...data } = body
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
 
-    if (!id) {
+    const rawBody = await request.json()
+    const parsedBody = productUpdateSchema.safeParse(rawBody)
+    if (!parsedBody.success) {
       return NextResponse.json(
-        { error: 'Ürün ID gerekli.' },
+        { error: parsedBody.error.issues[0]?.message || 'Gecersiz urun guncelleme verisi.' },
         { status: 400 }
       )
     }
+    const { id, ...data } = parsedBody.data
 
     // JSON alanlarını string'e çevir
     const updateData: Record<string, unknown> = { ...data }
@@ -180,13 +226,38 @@ export async function PUT(request: NextRequest) {
       updateData.features = data.features ? JSON.stringify(data.features) : null
     }
     if (data.price !== undefined) {
-      updateData.price = parseFloat(data.price)
+      const parsedPrice = toNumber(data.price)
+      if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+        return NextResponse.json(
+          { error: 'Fiyat alani gecersiz.' },
+          { status: 400 }
+        )
+      }
+      updateData.price = parsedPrice
     }
     if (data.comparePrice !== undefined) {
-      updateData.comparePrice = data.comparePrice ? parseFloat(data.comparePrice) : null
+      if (data.comparePrice === null || data.comparePrice === '') {
+        updateData.comparePrice = null
+      } else {
+        const parsedComparePrice = toNumber(data.comparePrice)
+        if (Number.isNaN(parsedComparePrice) || parsedComparePrice < 0) {
+          return NextResponse.json(
+            { error: 'Karsilastirma fiyati gecersiz.' },
+            { status: 400 }
+          )
+        }
+        updateData.comparePrice = parsedComparePrice
+      }
     }
     if (data.stock !== undefined) {
-      updateData.stock = parseInt(data.stock) || 0
+      const parsedStock = toNumber(data.stock)
+      if (Number.isNaN(parsedStock)) {
+        return NextResponse.json(
+          { error: 'Stok alani gecersiz.' },
+          { status: 400 }
+        )
+      }
+      updateData.stock = Math.max(0, Math.trunc(parsedStock))
     }
 
     const product = await db.product.update({
@@ -211,6 +282,9 @@ export async function PUT(request: NextRequest) {
 // Ürün sil (admin için)
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 

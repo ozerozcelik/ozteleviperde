@@ -8,6 +8,7 @@ import {
   useCallback,
   ReactNode,
 } from 'react'
+import { useSession } from 'next-auth/react'
 
 // Types
 export interface Product {
@@ -88,21 +89,81 @@ interface GuestCart {
   couponCode?: string
 }
 
+function isCartItems(value: unknown): value is CartItem[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as CartItem).id === 'string' &&
+        typeof (item as CartItem).productId === 'string' &&
+        typeof (item as CartItem).quantity === 'number' &&
+        typeof (item as CartItem).price === 'number'
+    )
+  )
+}
+
+function normalizeCart(value: unknown): Cart | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const raw = value as Partial<Cart>
+  if (typeof raw.id !== 'string' || !isCartItems(raw.items)) {
+    return null
+  }
+
+  return {
+    id: raw.id,
+    userId: typeof raw.userId === 'string' ? raw.userId : null,
+    sessionId: typeof raw.sessionId === 'string' ? raw.sessionId : null,
+    items: raw.items,
+    coupon: raw.coupon && typeof raw.coupon === 'object' ? raw.coupon : null,
+    subtotal: typeof raw.subtotal === 'number' ? raw.subtotal : 0,
+    discount: typeof raw.discount === 'number' ? raw.discount : 0,
+    total: typeof raw.total === 'number' ? raw.total : 0,
+  }
+}
+
+function isGuestCartItems(value: unknown): value is GuestCartItem[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as GuestCartItem).productId === 'string' &&
+        typeof (item as GuestCartItem).quantity === 'number' &&
+        typeof (item as GuestCartItem).price === 'number'
+    )
+  )
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { status } = useSession()
   const [cart, setCart] = useState<Cart | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isGuestMode, setIsGuestMode] = useState(true)
 
   // Calculate item count
-  const itemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0
+  const itemCount = Array.isArray(cart?.items)
+    ? cart.items.reduce((sum, item) => sum + item.quantity, 0)
+    : 0
 
   // Load cart from localStorage for guests
   const loadGuestCart = useCallback(() => {
     try {
       const stored = localStorage.getItem(GUEST_CART_KEY)
       if (stored) {
-        const guestCart: GuestCart = JSON.parse(stored)
+        const parsed = JSON.parse(stored) as Partial<GuestCart>
+        if (!isGuestCartItems(parsed?.items)) {
+          localStorage.removeItem(GUEST_CART_KEY)
+          setCart(null)
+          return
+        }
+        const guestCart: GuestCart = { items: parsed.items, couponCode: parsed.couponCode }
         // Convert guest cart to Cart format
         const items: CartItem[] = guestCart.items.map((item, index) => ({
           id: `guest-item-${index}`,
@@ -124,9 +185,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
           discount,
           total: subtotal - discount,
         })
+      } else {
+        setCart(null)
       }
     } catch (error) {
       console.error('Load guest cart error:', error)
+      localStorage.removeItem(GUEST_CART_KEY)
+      setCart(null)
     }
   }, [])
 
@@ -144,15 +209,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const refreshCart = useCallback(async () => {
     setIsLoading(true)
     try {
-      // Try to fetch from API first
-      const res = await fetch('/api/cart')
-      const data = await res.json()
+      const isAuthenticated = status === 'authenticated'
 
-      if (data.success && data.data) {
-        setCart(data.data)
+      if (isAuthenticated) {
+        const res = await fetch('/api/cart')
+        const data = await res.json()
+
+        if (data.success) {
+          setCart(normalizeCart(data.data))
+        } else {
+          setCart(null)
+        }
+
         setIsGuestMode(false)
       } else {
-        // Load from localStorage for guests
         loadGuestCart()
         setIsGuestMode(true)
       }
@@ -164,12 +234,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }, [loadGuestCart])
+  }, [loadGuestCart, status])
 
   // Load cart on mount
   useEffect(() => {
+    if (status === 'loading') return
     refreshCart()
-  }, [refreshCart])
+  }, [refreshCart, status])
 
   // Add item to cart
   const addItem = useCallback(
@@ -179,7 +250,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (isGuestMode) {
           // Fetch product details
           const productRes = await fetch(`/api/products?slug=${productId}`)
-          let product = null
+          let product: Product | null = null
 
           if (productRes.ok) {
             const productData = await productRes.json()
@@ -199,7 +270,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
 
           // Update local cart
-          const currentItems: GuestCartItem[] = cart?.items.map((item) => ({
+          const currentItems: GuestCartItem[] = (Array.isArray(cart?.items) ? cart.items : []).map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,
@@ -250,7 +321,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     async (itemId: string): Promise<boolean> => {
       try {
         if (isGuestMode) {
-          const currentItems = cart?.items || []
+          const currentItems = Array.isArray(cart?.items) ? cart.items : []
           const updatedItems = currentItems.filter((item) => item.id !== itemId)
 
           const guestItems: GuestCartItem[] = updatedItems.map((item) => ({
@@ -290,7 +361,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (quantity < 1) return false
 
         if (isGuestMode) {
-          const currentItems = cart?.items || []
+          const currentItems = Array.isArray(cart?.items) ? cart.items : []
           const updatedItems = currentItems.map((item) =>
             item.id === itemId ? { ...item, quantity } : item
           )
@@ -358,6 +429,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const applyCoupon = useCallback(
     async (code: string): Promise<{ success: boolean; message: string }> => {
       try {
+        if (!cart?.id) {
+          return { success: false, message: 'Kupon sadece kayıtlı sepetlerde kullanılabilir.' }
+        }
+
+        if (isGuestMode) {
+          return { success: false, message: 'Kupon kullanmak için giriş yapın.' }
+        }
+
         const res = await fetch('/api/coupon', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -379,7 +458,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return { success: false, message: 'Bir hata oluştu.' }
       }
     },
-    [cart, refreshCart]
+    [cart, isGuestMode, refreshCart]
   )
 
   // Remove coupon

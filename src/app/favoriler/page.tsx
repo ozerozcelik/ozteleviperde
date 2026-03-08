@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { OzTeleviLogo, OzTeleviLogoLight } from '@/components/OzTeleviLogo'
 import { useFavorites } from '@/contexts/FavoritesContext'
+import ManagedPage from '@/components/ManagedPage'
+import { usePageContent } from '@/hooks/usePageContent'
 
 // ============================================
 // Types
@@ -44,6 +46,8 @@ const categoryLabels: Record<string, string> = {
 // Favorites Page
 // ============================================
 export default function FavoritesPage() {
+  const { content: managedPage } = usePageContent('favoriler')
+
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { favorites, isLoading, removeFromFavorites } = useFavorites()
@@ -73,6 +77,19 @@ export default function FavoritesPage() {
     { href: '/#koleksiyon', label: 'Koleksiyon' },
     { href: '/galeri', label: 'Galeri' },
   ]
+
+  if (managedPage?.htmlContent || managedPage?.heroTitle) {
+    return <ManagedPage 
+      html={managedPage.htmlContent} 
+      schemaJson={managedPage.schemaJson}
+      heroTitle={managedPage.heroTitle}
+      heroSubtitle={managedPage.heroSubtitle}
+      heroImage={managedPage.heroImage}
+      heroCtaText={managedPage.heroCtaText}
+      heroCtaLink={managedPage.heroCtaLink}
+      sections={managedPage.sections}
+    />
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -135,8 +152,8 @@ export default function FavoritesPage() {
           </div>
 
           <div
-            className={`md:hidden overflow-hidden transition-all duration-500 ${
-              isMobileMenuOpen ? 'max-h-80 pb-6' : 'max-h-0'
+            className={`md:hidden overflow-hidden transition-all duration-300 bg-background/95 backdrop-blur-md border-t border-border/50 ${
+              isMobileMenuOpen ? 'max-h-[70vh] pb-6 overflow-y-auto' : 'max-h-0'
             }`}
           >
             <div className="flex flex-col gap-4 pt-4">
@@ -483,3 +500,4 @@ function Footer() {
     </footer>
   )
 }
+

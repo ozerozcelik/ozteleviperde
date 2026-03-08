@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { toAbsoluteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Galeri',
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
     images: ['/images/og-image.png'],
   },
   alternates: {
-    canonical: 'https://oztelevi.com/galeri',
+    canonical: toAbsoluteUrl('/galeri'),
   },
 }
 

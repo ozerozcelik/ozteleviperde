@@ -10,8 +10,12 @@ import { Input } from '@/components/ui/input'
 import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import { CartIcon } from '@/components/CartIcon'
 import { CartDrawer } from '@/components/CartDrawer'
+import ManagedPage from '@/components/ManagedPage'
+import { usePageContent } from '@/hooks/usePageContent'
 
 export default function CartPage() {
+  const { content: managedPage } = usePageContent('sepet')
+
   const {
     cart,
     isLoading,
@@ -70,6 +74,19 @@ export default function CartPage() {
       style: 'currency',
       currency: 'TRY',
     })
+  }
+
+  if (managedPage?.htmlContent || managedPage?.heroTitle) {
+    return <ManagedPage 
+      html={managedPage.htmlContent} 
+      schemaJson={managedPage.schemaJson}
+      heroTitle={managedPage.heroTitle}
+      heroSubtitle={managedPage.heroSubtitle}
+      heroImage={managedPage.heroImage}
+      heroCtaText={managedPage.heroCtaText}
+      heroCtaLink={managedPage.heroCtaLink}
+      sections={managedPage.sections}
+    />
   }
 
   return (

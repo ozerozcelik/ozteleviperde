@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/components/providers";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { OrganizationJsonLd } from "@/components/JsonLd";
+import { Analytics } from "@/components/Analytics";
+import { SITE_URL } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://oztelevi.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "ÖzTelevi - Ev Tekstili ve Perdeleri | Işığın Huzurla Buluştuğu Yer",
     template: "%s | ÖzTelevi",
@@ -48,14 +50,13 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: "/logo.svg",
   },
   manifest: "/site.webmanifest",
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    url: "https://oztelevi.com",
+    url: SITE_URL,
     siteName: "ÖzTelevi",
     title: "ÖzTelevi - Ev Tekstili ve Perdeleri | Işığın Huzurla Buluştuğu Yer",
     description: "Japon estetiği ve İskandinav sadeliğinden ilham alan el işçiliği tekstiller ve perdeler. Her parça, yaşam alanınıza huzur davetidir.",
@@ -73,7 +74,7 @@ export const metadata: Metadata = {
     title: "ÖzTelevi - Ev Tekstili ve Perdeleri",
     description: "Işığın huzurla buluştuğu yer. Japandi tasarım ev tekstilleri.",
     images: ["/images/og-image.png"],
-    creator: "@oztelevi",
+    creator: "@televiperde",
   },
   robots: {
     index: true,
@@ -87,12 +88,12 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: "google-site-verification-code",
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
   },
   alternates: {
-    canonical: "https://oztelevi.com",
+    canonical: SITE_URL,
     languages: {
-      "tr-TR": "https://oztelevi.com",
+      "tr-TR": SITE_URL,
     },
   },
 };
@@ -112,6 +113,7 @@ export default function RootLayout({
           {children}
           <Toaster />
           <WhatsAppButton />
+          <Analytics />
         </Providers>
       </body>
     </html>
