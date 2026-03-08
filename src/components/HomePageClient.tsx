@@ -71,7 +71,7 @@ export default function HomePageClient({ content }: { content: HomePageContent }
         <CraftsmanshipSection content={content.craftsmanship} />
         
         {/* Living Spaces Section */}
-        <LivingSpacesSection content={content.livingSpaces} />
+        <LivingSpacesSection content={content.livingSpaces} quote={content.testimonials} />
         
         {/* Testimonials Section */}
         <TestimonialsSection content={content.testimonials} />
@@ -81,7 +81,7 @@ export default function HomePageClient({ content }: { content: HomePageContent }
       </main>
       
       {/* Footer */}
-      <Footer />
+      <Footer content={content.footer} />
       
       {/* Cart Drawer */}
       <CartDrawer />
@@ -978,7 +978,13 @@ function CraftsmanshipSection({ content }: { content: HomePageContent['craftsman
 // ============================================
 // Living Spaces Section
 // ============================================
-function LivingSpacesSection({ content }: { content: HomePageContent['livingSpaces'] }) {
+function LivingSpacesSection({
+  content,
+  quote,
+}: {
+  content: HomePageContent['livingSpaces']
+  quote: Pick<HomePageContent['testimonials'], 'featuredQuoteText' | 'featuredQuoteAttribution'>
+}) {
   return (
     <section
       id="mekanlar"
@@ -1040,12 +1046,10 @@ function LivingSpacesSection({ content }: { content: HomePageContent['livingSpac
         {/* Quote */}
         <blockquote className="max-w-3xl mx-auto mt-16 md:mt-24 text-center opacity-0 translate-y-8 animate-fade-in-up stagger-5 in-view:opacity-100 in-view:translate-y-0 in-view:duration-1000">
           <p className="text-2xl md:text-3xl font-light text-foreground leading-relaxed italic">
-            &ldquo;Işığın bir mekan boyunca hareket etme biçimi, orada nasıl
-            hissettiğimizi tanımlar. Perdelerimiz bu ilişkiye saygı duymak
-            için tasarlandı.&rdquo;
+            &ldquo;{quote.featuredQuoteText}&rdquo;
           </p>
           <footer className="mt-6 text-muted-foreground">
-            <span className="text-sm">— Ayşe Özdemir, Kurucu</span>
+            <span className="text-sm">— {quote.featuredQuoteAttribution}</span>
           </footer>
         </blockquote>
       </div>
@@ -1057,27 +1061,6 @@ function LivingSpacesSection({ content }: { content: HomePageContent['livingSpac
 // Testimonials Section
 // ============================================
 function TestimonialsSection({ content }: { content: HomePageContent['testimonials'] }) {
-  const testimonials = [
-    {
-      quote:
-        "Bu perdeler ev ofisimi huzurlu bir sığınağa dönüştürdü. Kalite mükemmel ve ışığı süzme şekli basitçe güzel.",
-      author: 'Selin A.',
-      location: 'İstanbul',
-    },
-    {
-      quote:
-        "Bu kadar yumuşak ve nefes alabilen bir yatak örtüsüyle hiç karşılaşmamıştım. Bulutun üzerinde uyumak gibi. Doğal renkler minimalist estetiğimle mükemmel uyum sağlıyor.",
-      author: 'Mehmet K.',
-      location: 'Ankara',
-    },
-    {
-      quote:
-        "ÖzTelevi'den her parça niyetli hissettiriyor. İşçilik her ayrıntıda belli. Bu, ev için yavaş moda.",
-      author: 'Elif Y.',
-      location: 'İzmir',
-    },
-  ]
-
   return (
     <section className="py-24 md:py-32 lg:py-40 bg-sage-50 relative overflow-hidden">
       {/* Decorative Elements */}
@@ -1100,7 +1083,7 @@ function TestimonialsSection({ content }: { content: HomePageContent['testimonia
 
         {/* Testimonials Grid */}
         <div className="grid md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial, index) => (
+          {content.items.map((testimonial, index) => (
             <div
               key={testimonial.author}
               className={`p-8 rounded-2xl bg-background border border-border/50 transition-all duration-500 hover:shadow-lg opacity-0 translate-y-8 animate-fade-in-up stagger-${index + 2} in-view:opacity-100 in-view:translate-y-0 in-view:duration-1000`}
@@ -1330,7 +1313,7 @@ function CTASection({ content }: { content: HomePageContent['contact'] }) {
 // ============================================
 // Footer Component
 // ============================================
-function Footer() {
+function Footer({ content }: { content: HomePageContent['footer'] }) {
   const { legal } = useSiteSettings()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -1419,13 +1402,13 @@ function Footer() {
               Koleksiyon
             </h4>
             <ul className="space-y-3">
-              {['Perdeler', 'Yatak Örtüleri', 'Atkılar', 'Minderler'].map((item) => (
-                <li key={item}>
+              {content.collectionLinks.map((item) => (
+                <li key={item.label}>
                   <a
-                    href="#"
+                    href={item.href}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
                   >
-                    {item}
+                    {item.label}
                   </a>
                 </li>
               ))}
@@ -1438,14 +1421,14 @@ function Footer() {
               Şirket
             </h4>
             <ul className="space-y-3">
-              {['Hikayemiz', 'Ustalarımız', 'Sürdürülebilirlik', 'Basın'].map(
+              {content.companyLinks.map(
                 (item) => (
-                  <li key={item}>
+                  <li key={item.label}>
                     <a
-                      href="#"
+                      href={item.href}
                       className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
                     >
-                      {item}
+                      {item.label}
                     </a>
                   </li>
                 )

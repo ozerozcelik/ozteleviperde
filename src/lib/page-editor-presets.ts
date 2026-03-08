@@ -164,11 +164,23 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         items: ['/images/hero.png', '/images/scene-bedroom.png'],
       },
       {
-        key: 'testimonials',
+        key: 'signature-quote',
         type: 'text',
+        title:
+          'Işığın bir mekan boyunca hareket etme biçimi, orada nasıl hissettiğimizi tanımlar. Perdelerimiz bu ilişkiye saygı duymak için tasarlandı.',
+        content: 'Ayşe Özdemir | Kurucu',
+      },
+      {
+        key: 'testimonials',
+        type: 'features',
         title: 'Huzur hikayeleri',
         content:
-          'Ana sayfada ziyaretci yorumlari yer alir. Bu alan su an kod icinde statik testimonial kartlari olarak gosteriliyor.',
+          'Ziyaretçi yorumları. Her satir su formatta olmali: Isim | Sehir | Yorum',
+        items: [
+          'Selin A. | İstanbul | Bu perdeler ev ofisimi huzurlu bir sığınağa dönüştürdü. Kalite mükemmel ve ışığı süzme şekli basitçe güzel.',
+          'Mehmet K. | Ankara | Bu kadar yumuşak ve nefes alabilen bir yatak örtüsüyle hiç karşılaşmamıştım. Bulutun üzerinde uyumak gibi. Doğal renkler minimalist estetiğimle mükemmel uyum sağlıyor.',
+          'Elif Y. | İzmir | ÖzTelevi’den her parça niyetli hissettiriyor. İşçilik her ayrıntıda belli. Bu, ev için yavaş moda.',
+        ],
       },
       {
         key: 'contact-cta',
@@ -183,6 +195,30 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         ],
         link: '#iletisim',
         linkText: 'Yolculuğunuza Başlayın',
+      },
+      {
+        key: 'footer-collection-links',
+        type: 'features',
+        title: 'Footer Koleksiyon Linkleri',
+        content: 'Her satir su formatta olmali: Etiket | Link',
+        items: [
+          'Perdeler | /galeri',
+          'Yatak Örtüleri | /galeri',
+          'Atkılar | /galeri',
+          'Minderler | /galeri',
+        ],
+      },
+      {
+        key: 'footer-company-links',
+        type: 'features',
+        title: 'Footer Şirket Linkleri',
+        content: 'Her satir su formatta olmali: Etiket | Link',
+        items: [
+          'Hikayemiz | /hakkimizda',
+          'Ustalarımız | /hakkimizda',
+          'Sürdürülebilirlik | /hakkimizda',
+          'Basın | /blog',
+        ],
       },
     ],
   }),
@@ -259,10 +295,14 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
     sections: [
       {
         key: 'about-story',
-        type: 'text',
+        type: 'features',
         title: 'Bir tutku hikayesi',
         content:
           'ÖzTelevi, 1998 yılında Ayşe Özdemir’in tekstil sanatına olan tutkusundan doğdu. Wabi-sabi felsefesi ile İskandinav minimalizmini birleştirerek küçük bir atölyeden Türkiye’nin önde gelen ev tekstili markalarından birine dönüştü.',
+        items: [
+          'İlk atölyemiz, İstanbul’un kalbinde, Teşvikiye’de küçük bir bodrum katında açıldı. El dokuması perdelerimiz ve organik tekstillerimiz, kısa sürede sadelik ve kalite arayan müşterilerimizin beğenisini kazandı.',
+          'Bugün, üç kuşaktır süren zanaat geleneğimizi modern tasarım anlayışıyla birleştirerek, Türkiye’nin önde gelen ev tekstili markalarından biri olarak yolculuğumuza devam ediyoruz.',
+        ],
       },
       {
         key: 'about-mission-vision',
@@ -290,13 +330,21 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         key: 'about-team',
         type: 'features',
         title: 'Ekibimiz',
-        content: 'Canlı sayfada ekip kartları ve kısa biyografiler gösterilir.',
+        content: 'Her satir su formatta olmali: Isim | Rol | Kisa Biyografi | Gorsel URL',
         items: [
-          'Ayşe Özdemir - Kurucu ve Kreatif Direktör',
-          'Mehmet Kaya - Üretim Direktörü',
-          'Elif Yılmaz - Tasarım Lideri',
-          'Can Demir - Müşteri Deneyimi',
+          'Ayşe Özdemir | Kurucu & Kreatif Direktör | 20 yılı aşkın tekstil deneyimiyle Japandi felsefesini Türkiye’ye taşıyor. | /images/hero.png',
+          'Mehmet Kaya | Üretim Direktörü | El dokuma tekniklerinde uzman, sürdürülebilir üretimin mimarı. | /images/product-curtain.png',
+          'Elif Yılmaz | Tasarım Lideri | İskandinav ve Japon estetiğini buluşturan tasarımlar yaratıyor. | /images/product-textile.png',
+          'Can Demir | Müşteri Deneyimi | Her müşterinin hikayesini anlayan, kişisel çözümler sunuyor. | /images/scene-bedroom.png',
         ],
+      },
+      {
+        key: 'about-quote',
+        type: 'cta',
+        title:
+          'Işığın bir mekan boyunca hareket etme biçimi, orada nasıl hissettiğimizi tanımlar. Perdelerimiz bu ilişkiye saygı duymak için tasarlandı.',
+        content: 'Ayşe Özdemir | Kurucu',
+        image: '/images/hero.png',
       },
       {
         key: 'about-cta',

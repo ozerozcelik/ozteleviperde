@@ -8,6 +8,134 @@ import SocialMediaButtons from '@/components/SocialMediaButtons'
 import ManagedPage from '@/components/ManagedPage'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
+import { sanitizeImageUrl, sanitizeUrl } from '@/lib/content-sanitizer'
+import { getPageEditorPreset, type PageEditorSection } from '@/lib/page-editor-presets'
+
+type ContentPair = {
+  title: string
+  description: string
+}
+
+type TeamMember = {
+  name: string
+  role: string
+  bio: string
+  image: string
+}
+
+type QuoteCard = {
+  text: string
+  author: string
+  role: string
+  image: string
+}
+
+function parseSections(value: string | null | undefined): PageEditorSection[] {
+  if (!value) return []
+
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? (parsed as PageEditorSection[]) : []
+  } catch {
+    return []
+  }
+}
+
+function normalizeKey(value: string | undefined) {
+  return (value || '').trim().toLowerCase()
+}
+
+function findSection(sections: PageEditorSection[], key: string) {
+  return sections.find((section) => normalizeKey(section.key) === key)
+}
+
+function mergeSection(
+  key: string,
+  fallback: PageEditorSection | undefined,
+  sections: PageEditorSection[]
+) {
+  const match = findSection(sections, key)
+
+  if (!fallback) return match || null
+  if (!match) return fallback
+
+  return {
+    ...fallback,
+    ...match,
+    items: Array.isArray(match.items) && match.items.length > 0 ? match.items : fallback.items,
+  }
+}
+
+function normalizeText(value: string | null | undefined, fallback: string) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : fallback
+}
+
+function parseFeatureItems(items: string[] | undefined, fallback: ContentPair[]) {
+  const parsed = (items || [])
+    .map((item) => {
+      const [title, ...rest] = item.split(' - ')
+      return {
+        title: title?.trim() || '',
+        description: rest.join(' - ').trim(),
+      }
+    })
+    .filter((item) => item.title.length > 0 && item.description.length > 0)
+
+  return parsed.length > 0 ? parsed : fallback
+}
+
+function collectParagraphs(
+  content: string | undefined,
+  items: string[] | undefined,
+  fallback: string[]
+) {
+  const paragraphs = [content || '', ...(items || [])]
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  return paragraphs.length > 0 ? paragraphs : fallback
+}
+
+function parseTeamMembers(items: string[] | undefined, fallback: TeamMember[]) {
+  const parsed = (items || [])
+    .map((item) => {
+      if (item.includes('|')) {
+        const [name, role, bio, image] = item.split('|').map((part) => part.trim())
+        return { name, role, bio, image }
+      }
+
+      const [name, role] = item.split(' - ').map((part) => part.trim())
+      const existing = fallback.find((member) => member.name === name)
+
+      return {
+        name,
+        role,
+        bio: existing?.bio || '',
+        image: existing?.image || '/images/hero.png',
+      }
+    })
+    .filter((member) => member.name.length > 0 && member.role.length > 0)
+    .map((member) => ({
+      ...member,
+      image: sanitizeImageUrl(member.image) || fallback.find((entry) => entry.name === member.name)?.image || '/images/hero.png',
+    }))
+
+  return parsed.length > 0 ? parsed : fallback
+}
+
+function parseQuoteCard(section: PageEditorSection | null, fallback: QuoteCard) {
+  const [author, role] = (section?.content || '')
+    .split('|')
+    .map((part) => part.trim())
+
+  return {
+    text: normalizeText(section?.title, fallback.text),
+    author: normalizeText(author, fallback.author),
+    role: normalizeText(role, fallback.role),
+    image: sanitizeImageUrl(section?.image) || fallback.image,
+  }
+}
 
 // ============================================
 // About Page - ÖzTelevi Hakkımızda
@@ -33,51 +161,95 @@ export default function AboutPage() {
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
   ]
 
-  const values = [
+  const baseline = getPageEditorPreset('hakkimizda')
+  const baselineSections = baseline?.sections || []
+  const pageSections = parseSections(managedPage?.sections)
+
+  const storySection = mergeSection('about-story', baselineSections[0], pageSections)
+  const missionVisionSection = mergeSection('about-mission-vision', baselineSections[1], pageSections)
+  const valuesSection = mergeSection('about-values', baselineSections[2], pageSections)
+  const teamSection = mergeSection('about-team', baselineSections[3], pageSections)
+  const quoteSection = mergeSection('about-quote', baselineSections[4], pageSections)
+  const ctaSection = mergeSection('about-cta', baselineSections[5], pageSections)
+
+  const heroTitle = normalizeText(managedPage?.heroTitle, baseline?.heroTitle || 'Işığın Huzurla Buluştuğu Yer')
+  const heroSubtitle = normalizeText(
+    managedPage?.heroSubtitle,
+    baseline?.heroSubtitle ||
+      '1998 yılından bu yana, evleri sığınağa dönüştüren tekstiller yaratıyoruz.'
+  )
+  const heroImage = sanitizeImageUrl(managedPage?.heroImage) || sanitizeImageUrl(baseline?.heroImage) || '/images/hero.png'
+
+  const storyParagraphs = collectParagraphs(storySection?.content, storySection?.items, [
+    'ÖzTelevi, 1998 yılında Ayşe Özdemir’in tekstil sanatına olan tutkusundan doğdu. Japonya’yı ziyareti sırasında karşılaştığı wabi-sabi felsefesi ve İskandinav tasarımının sıcak minimalizmi, markanın temelini oluşturdu.',
+    'İlk atölyemiz, İstanbul’un kalbinde, Teşvikiye’de küçük bir bodrum katında açıldı. El dokuması perdelerimiz ve organik tekstillerimiz, kısa sürede sadelik ve kalite arayan müşterilerimizin beğenisini kazandı.',
+    'Bugün, üç kuşaktır süren zanaat geleneğimizi modern tasarım anlayışıyla birleştirerek, Türkiye’nin önde gelen ev tekstili markalarından biri olarak yolculuğumuza devam ediyoruz.',
+  ])
+
+  const missionVision = parseFeatureItems(missionVisionSection?.items, [
     {
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-        </svg>
-      ),
+      title: 'Misyonumuz',
+      description:
+        'Evleri gerçek sığınaklara dönüştüren, doğal malzemelerden üretilmiş, el işçiliği tekstiller ve perdeler sunmak.',
+    },
+    {
+      title: 'Vizyonumuz',
+      description:
+        'Türkiye’nin en güvenilen ve sürdürülebilir ev tekstili markası olmak; Japandi estetiğini daha fazla yaşam alanına taşımak.',
+    },
+  ])
+
+  const valueIcons = [
+    (
+      <svg key="value-icon-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+    ),
+    (
+      <svg key="value-icon-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
+        <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+      </svg>
+    ),
+    (
+      <svg key="value-icon-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
+        <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+    ),
+    (
+      <svg key="value-icon-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
+        <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    ),
+  ]
+
+  const values = parseFeatureItems(valuesSection?.items, [
+    {
       title: 'Sadakat',
       description: 'Kaliteye ve müşteri memnuniyetine olan sarsılmaz bağlılığımız.',
     },
     {
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-          <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-        </svg>
-      ),
       title: 'Sürdürülebilirlik',
       description: 'Doğaya saygı, çevre dostu üretim ve etik kaynak kullanımı.',
     },
     {
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
-      ),
       title: 'Tutku',
       description: 'Her dokunuşta hissedilen zanaata olan derin sevgimiz.',
     },
     {
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-          <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ),
       title: 'Dürüstlük',
       description: 'Şeffaflık ve dürüstlük üzerine kurulu güvenilir ilişkiler.',
     },
-  ]
+  ]).map((value, index) => ({
+    ...value,
+    icon: valueIcons[index] || valueIcons[valueIcons.length - 1],
+  }))
 
-  const team = [
+  const team = parseTeamMembers(teamSection?.items, [
     {
       name: 'Ayşe Özdemir',
       role: 'Kurucu & Kreatif Direktör',
       image: '/images/hero.png',
-      bio: '20 yılı aşkın tekstil deneyimiyle Japandi felsefesini Türkiye\'ye taşıyor.',
+      bio: "20 yılı aşkın tekstil deneyimiyle Japandi felsefesini Türkiye'ye taşıyor.",
     },
     {
       name: 'Mehmet Kaya',
@@ -97,9 +269,25 @@ export default function AboutPage() {
       image: '/images/scene-bedroom.png',
       bio: 'Her müşterinin hikayesini anlayan, kişisel çözümler sunuyor.',
     },
-  ]
+  ])
 
-  if (managedPage?.htmlContent || managedPage?.heroTitle) {
+  const founderQuote = parseQuoteCard(quoteSection, {
+    text:
+      'Işığın bir mekan boyunca hareket etme biçimi, orada nasıl hissettiğimizi tanımlar. Perdelerimiz bu ilişkiye saygı duymak için tasarlandı.',
+    author: 'Ayşe Özdemir',
+    role: 'Kurucu',
+    image: '/images/hero.png',
+  })
+
+  const ctaTitle = normalizeText(ctaSection?.title, 'Hikayemizin bir parçası olun')
+  const ctaDescription = normalizeText(
+    ctaSection?.content,
+    'Showroom’umuzu ziyaret edin, koleksiyonumuzu keşfedin ve yaşam alanınızı dönüştürmeye başlayın.'
+  )
+  const ctaLink = sanitizeUrl(ctaSection?.link) || '/koleksiyonlar'
+  const ctaLinkText = normalizeText(ctaSection?.linkText, 'Koleksiyonları Gör')
+
+  if (managedPage?.htmlContent) {
     return <ManagedPage 
       html={managedPage.htmlContent} 
       schemaJson={managedPage.schemaJson}
@@ -215,7 +403,7 @@ export default function AboutPage() {
         <section className="relative py-24 md:py-32 overflow-hidden">
           <div className="absolute inset-0 z-0">
             <Image
-              src="/images/hero.png"
+              src={heroImage}
               alt="ÖzTelevi Hakkımızda"
               fill
               className="object-cover"
@@ -229,13 +417,10 @@ export default function AboutPage() {
                 Hakkımızda
               </p>
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-light text-foreground leading-tight mb-6">
-                Işığın Huzurla{' '}
-                <span className="font-normal italic">Buluştuğu Yer</span>
+                {heroTitle}
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                1998 yılından bu yana, evleri sığınağa dönüştüren tekstiller yaratıyoruz.
-                Japon estetiğinin sade güzelliği ve İskandinav sadeliğinden ilham alarak,
-                yaşam alanlarınıza huzur, doğal ışık ve zamansız bir zarafet davetiyesidir.
+                {heroSubtitle}
               </p>
             </div>
           </div>
@@ -251,25 +436,12 @@ export default function AboutPage() {
                   Hikayemiz
                 </p>
                 <h2 className="text-3xl sm:text-4xl font-light text-foreground leading-tight mb-6">
-                  Bir <span className="font-normal italic">tutku</span> hikayesi
+                  {normalizeText(storySection?.title, 'Bir tutku hikayesi')}
                 </h2>
                 <div className="space-y-4 text-muted-foreground leading-relaxed">
-                  <p>
-                    ÖzTelevi, 1998 yılında Ayşe Özdemir&apos;in tekstil sanatına olan tutkusundan doğdu.
-                    Japonya&apos;yı ziyareti sırasında karşılaştığı &quot;wabi-sabi&quot; felsefesi -kusurluluktaki
-                    güzelliği takdir etme- ve İskandinav tasarımının sıcak minimalizmi, markanın
-                    temelini oluşturdu.
-                  </p>
-                  <p>
-                    İlk atölyemiz, İstanbul&apos;un kalbinde, Teşvikiye&apos;de küçük bir bodrum katında
-                    açıldı. El dokuması perdelerimiz ve organik tekstillerimiz, kısa sürede
-                    sadelik ve kalite arayan müşterilerimizin beğenisini kazandı.
-                  </p>
-                  <p>
-                    Bugün, üç kuşaktır süren zanaat geleneğimizi modern tasarım anlayışıyla
-                    birleştirerek, Türkiye&apos;nin önde gelen ev tekstili markalarından biri olarak
-                    yolculuğumuza devam ediyoruz.
-                  </p>
+                  {storyParagraphs.map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
                 </div>
               </div>
 
@@ -299,13 +471,10 @@ export default function AboutPage() {
                   </svg>
                 </div>
                 <h3 className="text-2xl font-light text-foreground mb-4">
-                  Misyonumuz
+                  {missionVision[0]?.title || 'Misyonumuz'}
                 </h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Evleri gerçek sığınaklara dönüştüren, doğal malzemelerden üretilmiş,
-                  el işçiliği tekstiller ve perdeler sunmak. Her müşterimizin yaşam
-                  alanına huzur, sıcaklık ve zamansız güzellik katmak için tasarım
-                  ve zanaatı birleştirmek.
+                  {missionVision[0]?.description}
                 </p>
               </div>
 
@@ -318,14 +487,10 @@ export default function AboutPage() {
                   </svg>
                 </div>
                 <h3 className="text-2xl font-light text-foreground mb-4">
-                  Vizyonumuz
+                  {missionVision[1]?.title || 'Vizyonumuz'}
                 </h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Türkiye&apos;nin en güvenilen ve sürdürülebilir ev tekstili markası
-                  olmak. Japandi estetiğini yaygınlaştırarak, daha fazla insanın
-                  yaşam alanlarında huzur ve farkındalık bulmasını sağlamak.
-                  Gelecek nesillere yaşanabilir bir dünya bırakmak için sorumluluk
-                  almak.
+                  {missionVision[1]?.description}
                 </p>
               </div>
             </div>
@@ -340,7 +505,7 @@ export default function AboutPage() {
                 Değerlerimiz
               </p>
               <h2 className="text-3xl sm:text-4xl font-light text-foreground leading-tight">
-                Ayakta <span className="font-normal italic">durduğumuz</span> temeller
+                {normalizeText(valuesSection?.title, 'Ayakta durduğumuz temeller')}
               </h2>
             </div>
 
@@ -375,11 +540,13 @@ export default function AboutPage() {
                 Ekibimiz
               </p>
               <h2 className="text-3xl sm:text-4xl font-light text-foreground leading-tight mb-4">
-                Tutkulu <span className="font-normal italic">insanlar</span>
+                {normalizeText(teamSection?.title, 'Tutkulu insanlar')}
               </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Her biri alanında uzman, zanaata ve kaliteye adamış ekibimizle
-                tanışın.
+                {normalizeText(
+                  teamSection?.content,
+                  'Her biri alanında uzman, zanaata ve kaliteye adamış ekibimizle tanışın.'
+                )}
               </p>
             </div>
 
@@ -418,22 +585,20 @@ export default function AboutPage() {
           <div className="max-w-4xl mx-auto px-6 text-center">
             <blockquote>
               <p className="text-2xl md:text-3xl font-light text-background leading-relaxed italic mb-8">
-                &ldquo;Işığın bir mekan boyunca hareket etme biçimi, orada nasıl
-                hissettiğimizi tanımlar. Perdelerimiz bu ilişkiye saygı duymak
-                için tasarlandı.&rdquo;
+                &ldquo;{founderQuote.text}&rdquo;
               </p>
               <footer className="flex items-center justify-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-background/20 overflow-hidden relative">
                   <Image
-                    src="/images/hero.png"
-                    alt="Ayşe Özdemir"
+                    src={founderQuote.image}
+                    alt={founderQuote.author}
                     fill
                     className="object-cover"
                   />
                 </div>
                 <div className="text-left">
-                  <p className="text-background font-medium">Ayşe Özdemir</p>
-                  <p className="text-background/70 text-sm">Kurucu</p>
+                  <p className="text-background font-medium">{founderQuote.author}</p>
+                  <p className="text-background/70 text-sm">{founderQuote.role}</p>
                 </div>
               </footer>
             </blockquote>
@@ -444,11 +609,10 @@ export default function AboutPage() {
         <section className="py-24 md:py-32 bg-background">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h2 className="text-3xl sm:text-4xl font-light text-foreground leading-tight mb-6">
-              Hikayemizin bir <span className="font-normal italic">parçası</span> olun
+              {ctaTitle}
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              Showroom&apos;umuzu ziyaret edin, koleksiyonumuzu keşfedin ve yaşam
-              alanınızı dönüştürmeye başlayın.
+              {ctaDescription}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
@@ -458,10 +622,10 @@ export default function AboutPage() {
                 Bize Ulaşın
               </a>
               <Link
-                href="/koleksiyonlar"
+                href={ctaLink}
                 className="px-8 py-4 border border-foreground/30 text-foreground text-sm tracking-wide rounded-full transition-all duration-500 hover:border-foreground/50 hover:bg-foreground/5"
               >
-                Koleksiyonları Gör
+                {ctaLinkText}
               </Link>
             </div>
           </div>

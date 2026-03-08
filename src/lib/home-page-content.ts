@@ -20,6 +20,17 @@ type ContentPair = {
   description: string
 }
 
+type LinkItem = {
+  label: string
+  href: string
+}
+
+type TestimonialItem = {
+  quote: string
+  author: string
+  location: string
+}
+
 export type HomePageContent = {
   seoTitle: string
   seoDescription: string
@@ -69,6 +80,9 @@ export type HomePageContent = {
     eyebrow: string
     title: string
     description: string
+    featuredQuoteText: string
+    featuredQuoteAttribution: string
+    items: TestimonialItem[]
   }
   contact: {
     eyebrow: string
@@ -79,6 +93,10 @@ export type HomePageContent = {
       phone: string
       address: string
     }
+  }
+  footer: {
+    collectionLinks: LinkItem[]
+    companyLinks: LinkItem[]
   }
 }
 
@@ -210,6 +228,33 @@ function parseContactDetails(items: string[] | undefined, fallback: [string, str
   }
 }
 
+function parsePipeSeparatedItems(items: string[] | undefined, expectedParts: number) {
+  return (items || [])
+    .map((item) => item.split('|').map((part) => part.trim()))
+    .filter((parts) => parts.length >= expectedParts && parts.every((part) => part.length > 0))
+}
+
+function parseTestimonials(items: string[] | undefined, fallback: TestimonialItem[]) {
+  const parsed = parsePipeSeparatedItems(items, 3).map(([author, location, quote]) => ({
+    author,
+    location,
+    quote,
+  }))
+
+  return parsed.length > 0 ? parsed : fallback
+}
+
+function parseFooterLinks(items: string[] | undefined, fallback: LinkItem[]) {
+  const parsed = parsePipeSeparatedItems(items, 2)
+    .map(([label, href]) => ({
+      label,
+      href: normalizeLink(href, '#'),
+    }))
+    .filter((item) => item.label.length > 0)
+
+  return parsed.length > 0 ? parsed : fallback
+}
+
 export async function getHomePageContent(): Promise<HomePageContent> {
   noStore()
 
@@ -243,8 +288,11 @@ export async function getHomePageContent(): Promise<HomePageContent> {
   const productsSection = mergeSection(baselineSections[2], pageSections, 2)
   const craftsmanshipSection = mergeSection(baselineSections[3], pageSections, 3)
   const livingSpacesSection = mergeSection(baselineSections[4], pageSections, 4)
-  const testimonialsSection = mergeSection(baselineSections[5], pageSections, 5)
-  const contactSection = mergeSection(baselineSections[6], pageSections, 6)
+  const signatureQuoteSection = mergeSection(baselineSections[5], pageSections, 5)
+  const testimonialsSection = mergeSection(baselineSections[6], pageSections, 6)
+  const contactSection = mergeSection(baselineSections[7], pageSections, 7)
+  const footerCollectionSection = mergeSection(baselineSections[8], pageSections, 8)
+  const footerCompanySection = mergeSection(baselineSections[9], pageSections, 9)
 
   return {
     seoTitle: normalizeText(publishedPage?.seoTitle, baseline.seoTitle),
@@ -338,17 +386,59 @@ export async function getHomePageContent(): Promise<HomePageContent> {
     },
     testimonials: {
       eyebrow: 'Müşteri Yorumları',
-      title: normalizeText(testimonialsSection.title, baselineSections[5].title || ''),
-      description: normalizeText(testimonialsSection.content, baselineSections[5].content || ''),
+      title: normalizeText(testimonialsSection.title, baselineSections[6].title || ''),
+      description: normalizeText(testimonialsSection.content, baselineSections[6].content || ''),
+      featuredQuoteText: normalizeText(
+        signatureQuoteSection.title,
+        baselineSections[5].title || ''
+      ),
+      featuredQuoteAttribution: normalizeText(
+        signatureQuoteSection.content,
+        baselineSections[5].content || ''
+      ),
+      items: parseTestimonials(testimonialsSection.items, [
+        {
+          quote:
+            'Bu perdeler ev ofisimi huzurlu bir sığınağa dönüştürdü. Kalite mükemmel ve ışığı süzme şekli basitçe güzel.',
+          author: 'Selin A.',
+          location: 'İstanbul',
+        },
+        {
+          quote:
+            'Bu kadar yumuşak ve nefes alabilen bir yatak örtüsüyle hiç karşılaşmamıştım. Bulutun üzerinde uyumak gibi. Doğal renkler minimalist estetiğimle mükemmel uyum sağlıyor.',
+          author: 'Mehmet K.',
+          location: 'Ankara',
+        },
+        {
+          quote:
+            "ÖzTelevi'den her parça niyetli hissettiriyor. İşçilik her ayrıntıda belli. Bu, ev için yavaş moda.",
+          author: 'Elif Y.',
+          location: 'İzmir',
+        },
+      ]),
     },
     contact: {
-      eyebrow: normalizeText(contactSection.linkText, baselineSections[6].linkText || 'Yolculuğunuza Başlayın'),
-      title: normalizeText(contactSection.title, baselineSections[6].title || ''),
-      description: normalizeText(contactSection.content, baselineSections[6].content || ''),
+      eyebrow: normalizeText(contactSection.linkText, baselineSections[7].linkText || 'Yolculuğunuza Başlayın'),
+      title: normalizeText(contactSection.title, baselineSections[7].title || ''),
+      description: normalizeText(contactSection.content, baselineSections[7].content || ''),
       details: parseContactDetails(contactSection.items, [
         'info@oztelevi.com',
         '+90 (212) 555 0123',
         'Teşvikiye Mah., Bağdar Caddesi No:42, Şişli, İstanbul',
+      ]),
+    },
+    footer: {
+      collectionLinks: parseFooterLinks(footerCollectionSection.items, [
+        { label: 'Perdeler', href: '/galeri' },
+        { label: 'Yatak Örtüleri', href: '/galeri' },
+        { label: 'Atkılar', href: '/galeri' },
+        { label: 'Minderler', href: '/galeri' },
+      ]),
+      companyLinks: parseFooterLinks(footerCompanySection.items, [
+        { label: 'Hikayemiz', href: '/hakkimizda' },
+        { label: 'Ustalarımız', href: '/hakkimizda' },
+        { label: 'Sürdürülebilirlik', href: '/hakkimizda' },
+        { label: 'Basın', href: '/blog' },
       ]),
     },
   }
