@@ -184,18 +184,67 @@ function parsePageSections(sections: string | null | undefined): PageSection[] {
   }
 }
 
+function normalizeSectionKey(section: Pick<PageSection, 'key' | 'title'> | undefined) {
+  if (!section) return ''
+
+  const key = section.key?.trim().toLowerCase()
+  if (key) return `key:${key}`
+
+  const title = section.title
+    ?.trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+
+  return title ? `title:${title}` : ''
+}
+
 function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) {
   const currentSections = parsePageSections(page.sections)
-  const resolvedSections =
-    currentSections.length > 0 && baseline
-      ? currentSections.map((section, index) => ({
-          ...baseline.sections[index],
-          ...section,
-          key: section.key || baseline.sections[index]?.key,
-        }))
-      : currentSections.length > 0
-        ? currentSections
-        : baseline?.sections || []
+
+  let resolvedSections: PageSection[] = []
+
+  if (currentSections.length > 0 && baseline) {
+    const currentSectionsByIdentity = new Map<string, PageSection>()
+
+    currentSections.forEach((section) => {
+      const identity = normalizeSectionKey(section)
+      if (identity) {
+        currentSectionsByIdentity.set(identity, section)
+      }
+    })
+
+    const matchedIdentities = new Set<string>()
+
+    resolvedSections = baseline.sections.map((baselineSection, index) => {
+      const baselineIdentity = normalizeSectionKey(baselineSection)
+      const matchedSection =
+        (baselineIdentity ? currentSectionsByIdentity.get(baselineIdentity) : undefined) ||
+        currentSections[index]
+
+      if (baselineIdentity && currentSectionsByIdentity.has(baselineIdentity)) {
+        matchedIdentities.add(baselineIdentity)
+      }
+
+      return {
+        ...baselineSection,
+        ...matchedSection,
+        key: matchedSection?.key || baselineSection.key,
+      }
+    })
+
+    const extraSections = currentSections.filter((section) => {
+      const identity = normalizeSectionKey(section)
+      return identity ? !matchedIdentities.has(identity) : false
+    })
+
+    if (extraSections.length > 0) {
+      resolvedSections = [...resolvedSections, ...extraSections]
+    }
+  } else if (currentSections.length > 0) {
+    resolvedSections = currentSections
+  } else {
+    resolvedSections = baseline?.sections || []
+  }
 
   return {
     form: {
