@@ -447,7 +447,7 @@ function CollectionCard({
 // Footer Component
 // ============================================
 function Footer() {
-  const { contact } = useSiteSettings()
+  const { contact, legal } = useSiteSettings()
   const [email, setEmail] = useState('')
   const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
@@ -571,8 +571,8 @@ function Footer() {
             © {new Date().getFullYear()} ÖzTelevi. Tüm hakları saklıdır.
           </p>
           <div className="flex gap-6 text-sm text-background/50">
-            <a href="#" className="hover:text-background/70 transition-colors">Gizlilik Politikası</a>
-            <a href="#" className="hover:text-background/70 transition-colors">Kullanım Şartları</a>
+            <a href={legal.privacy} className="hover:text-background/70 transition-colors">Gizlilik Politikası</a>
+            <a href={legal.terms} className="hover:text-background/70 transition-colors">Kullanım Şartları</a>
           </div>
         </div>
       </div>

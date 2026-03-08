@@ -17,9 +17,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
 import ManagedPage from '@/components/ManagedPage'
 import { usePageContent } from '@/hooks/usePageContent'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
 function GirisPageContent() {
   const { content: managedPage } = usePageContent('giris')
+  const { legal } = useSiteSettings()
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -445,11 +447,11 @@ function GirisPageContent() {
 
                     <p className="text-xs text-center text-muted-foreground">
                       Kayıt olarak{' '}
-                      <Link href="#" className="underline hover:text-foreground">
+                      <Link href={legal.terms} className="underline hover:text-foreground">
                         Kullanım Şartları
                       </Link>{' '}
                       ve{' '}
-                      <Link href="#" className="underline hover:text-foreground">
+                      <Link href={legal.privacy} className="underline hover:text-foreground">
                         Gizlilik Politikası
                       </Link>
                       &apos;nı kabul etmiş olursunuz.

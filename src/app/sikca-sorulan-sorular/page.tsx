@@ -29,91 +29,100 @@ interface FAQ {
   updatedAt: string
 }
 
-// ============================================
-// Fallback FAQs (when API returns empty)
-// ============================================
-const fallbackFAQs: FAQ[] = [
-  {
-    id: '1',
-    question: 'Ürünleriniz hangi malzemelerden üretilmektedir?',
-    answer: 'Tüm ürünlerimiz %100 doğal malzemelerden üretilmektedir. Keten, organik pamuk, bambu ve sürdürülebilir lifler koleksiyonumuzun temelini oluşturur. Her malzeme etik kaynaklıdır ve çevre dostu üretim süreçleri kullanılır.',
-    category: 'urunler',
-    order: 1,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    question: 'Perde ölçüsü nasıl alınır?',
-    answer: 'Perde ölçüsü alırken, pencere genişliğine 20-30 cm eklemenizi öneririz. Yükseklik için tavan veya tavan süsünden zemine kadar ölçüm yapın. Ücretsiz ölçü hizmetimiz için bizimle iletişime geçebilirsiniz.',
-    category: 'urunler',
-    order: 2,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    question: 'Siparişimi nasıl verebilirim?',
-    answer: 'Web sitemiz üzerinden, telefonla veya showroomlarımızda sipariş verebilirsiniz. Özel ölçü ve tasarım talepleriniz için uzman ekibimizle görüşmenizi öneririz.',
-    category: 'siparis',
-    order: 3,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    question: 'Teslimat süresi ne kadardır?',
-    answer: 'Standart ürünler için 3-5 iş günü, özel ölçü perdeler için 2-4 hafta teslimat süresi bulunmaktadır. İstanbul içi ücretsiz montaj hizmeti sunuyoruz.',
-    category: 'teslimat',
-    order: 4,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    question: 'İade ve değişim koşulları nelerdir?',
-    answer: 'Standart ürünlerde 14 gün içinde koşulsuz iade hakkınız bulunmaktadır. Özel ölçü ve kişiye özel ürünlerde iade yapılamamaktadır. Değişim için ürünün kullanılmamış ve orijinal ambalajında olması gerekmektedir.',
-    category: 'iade',
-    order: 5,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '6',
-    question: 'Showroomlarınız nerede bulunmaktadır?',
-    answer: 'Ana showroom\'umuz Teşvikiye Mah., Bağdar Caddesi No:42, Şişli, İstanbul adresinde bulunmaktadır. Hafta içi 09:00-18:00, Cumartesi 10:00-16:00 arasında ziyaret edebilirsiniz.',
-    category: 'genel',
-    order: 6,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '7',
-    question: 'Ürünleriniz garanti kapsamında mıdır?',
-    answer: 'Evet, tüm ürünlerimiz 2 yıl garanti kapsamındadır. Üretim hatalarından kaynaklanan sorunlarda ücretsiz onarım veya değişim yapılır. Garanti koşulları detayları için ürünle birlikte gelen garanti belgesini inceleyebilirsiniz.',
-    category: 'urunler',
-    order: 7,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '8',
-    question: 'Montaj hizmeti veriyor musunuz?',
-    answer: 'Evet, İstanbul içi tüm siparişlerde ücretsiz profesyonel montaj hizmeti sunuyoruz. Diğer şehirler için montaj ekibi yönlendirmemiz veya montaj kiti sağlamamız mümkündür.',
-    category: 'teslimat',
-    order: 8,
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+function getFallbackFAQs({
+  address,
+  weekdays,
+  saturday,
+}: {
+  address: string
+  weekdays: { opens: string; closes: string }
+  saturday: { opens: string; closes: string }
+}): FAQ[] {
+  const timestamp = new Date().toISOString()
+
+  return [
+    {
+      id: '1',
+      question: 'Ürünleriniz hangi malzemelerden üretilmektedir?',
+      answer: 'Tüm ürünlerimiz %100 doğal malzemelerden üretilmektedir. Keten, organik pamuk, bambu ve sürdürülebilir lifler koleksiyonumuzun temelini oluşturur. Her malzeme etik kaynaklıdır ve çevre dostu üretim süreçleri kullanılır.',
+      category: 'urunler',
+      order: 1,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: '2',
+      question: 'Perde ölçüsü nasıl alınır?',
+      answer: 'Perde ölçüsü alırken, pencere genişliğine 20-30 cm eklemenizi öneririz. Yükseklik için tavan veya tavan süsünden zemine kadar ölçüm yapın. Ücretsiz ölçü hizmetimiz için bizimle iletişime geçebilirsiniz.',
+      category: 'urunler',
+      order: 2,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: '3',
+      question: 'Siparişimi nasıl verebilirim?',
+      answer: 'Web sitemiz üzerinden, telefonla veya showroomlarımızda sipariş verebilirsiniz. Özel ölçü ve tasarım talepleriniz için uzman ekibimizle görüşmenizi öneririz.',
+      category: 'siparis',
+      order: 3,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: '4',
+      question: 'Teslimat süresi ne kadardır?',
+      answer: 'Standart ürünler için 3-5 iş günü, özel ölçü perdeler için 2-4 hafta teslimat süresi bulunmaktadır. İstanbul içi ücretsiz montaj hizmeti sunuyoruz.',
+      category: 'teslimat',
+      order: 4,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: '5',
+      question: 'İade ve değişim koşulları nelerdir?',
+      answer: 'Standart ürünlerde 14 gün içinde koşulsuz iade hakkınız bulunmaktadır. Özel ölçü ve kişiye özel ürünlerde iade yapılamamaktadır. Değişim için ürünün kullanılmamış ve orijinal ambalajında olması gerekmektedir.',
+      category: 'iade',
+      order: 5,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: '6',
+      question: 'Showroomlarınız nerede bulunmaktadır?',
+      answer: `Ana showroom'umuz ${address} adresinde bulunmaktadır. Hafta içi ${weekdays.opens}-${weekdays.closes}, Cumartesi ${saturday.opens}-${saturday.closes} arasında ziyaret edebilirsiniz.`,
+      category: 'genel',
+      order: 6,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: '7',
+      question: 'Ürünleriniz garanti kapsamında mıdır?',
+      answer: 'Evet, tüm ürünlerimiz 2 yıl garanti kapsamındadır. Üretim hatalarından kaynaklanan sorunlarda ücretsiz onarım veya değişim yapılır. Garanti koşulları detayları için ürünle birlikte gelen garanti belgesini inceleyebilirsiniz.',
+      category: 'urunler',
+      order: 7,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: '8',
+      question: 'Montaj hizmeti veriyor musunuz?',
+      answer: 'Evet, İstanbul içi tüm siparişlerde ücretsiz profesyonel montaj hizmeti sunuyoruz. Diğer şehirler için montaj ekibi yönlendirmemiz veya montaj kiti sağlamamız mümkündür.',
+      category: 'teslimat',
+      order: 8,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  ]
+}
 
 const categoryLabels: Record<string, string> = {
   tumu: 'Tümü',
@@ -128,8 +137,13 @@ const categoryLabels: Record<string, string> = {
 // FAQ Page Component
 // ============================================
 export default function FAQPage() {
-  const { contact } = useSiteSettings()
+  const { contact, structuredData } = useSiteSettings()
   const { content: managedPage } = usePageContent('sikca-sorulan-sorular')
+  const fallbackFAQs = getFallbackFAQs({
+    address: contact.address,
+    weekdays: structuredData.openingHours.weekdays,
+    saturday: structuredData.openingHours.saturday,
+  })
 
   const [activeSection, setActiveSection] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
@@ -433,7 +447,7 @@ export default function FAQPage() {
 // Footer Component
 // ============================================
 function Footer() {
-  const { contact } = useSiteSettings()
+  const { contact, legal } = useSiteSettings()
   const [email, setEmail] = useState('')
   const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
@@ -557,8 +571,8 @@ function Footer() {
             © {new Date().getFullYear()} ÖzTelevi. Tüm hakları saklıdır.
           </p>
           <div className="flex gap-6 text-sm text-background/50">
-            <a href="#" className="hover:text-background/70 transition-colors">Gizlilik Politikası</a>
-            <a href="#" className="hover:text-background/70 transition-colors">Kullanım Şartları</a>
+            <a href={legal.privacy} className="hover:text-background/70 transition-colors">Gizlilik Politikası</a>
+            <a href={legal.terms} className="hover:text-background/70 transition-colors">Kullanım Şartları</a>
           </div>
         </div>
       </div>

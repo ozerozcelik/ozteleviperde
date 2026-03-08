@@ -7,6 +7,7 @@ import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import SocialMediaButtons from '@/components/SocialMediaButtons'
 import ManagedPage from '@/components/ManagedPage'
 import { usePageContent } from '@/hooks/usePageContent'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
 // ============================================
 // Types
@@ -453,6 +454,7 @@ export default function BlogPage() {
 // Footer Component
 // ============================================
 function Footer() {
+  const { legal } = useSiteSettings()
   const [email, setEmail] = useState('')
   const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
@@ -557,10 +559,10 @@ function Footer() {
             © {new Date().getFullYear()} ÖzTelevi. Tüm hakları saklıdır.
           </p>
           <div className="flex gap-6 text-sm text-background/50">
-            <Link href="#" className="hover:text-background transition-colors">
+            <Link href={legal.privacy} className="hover:text-background transition-colors">
               Gizlilik Politikası
             </Link>
-            <Link href="#" className="hover:text-background transition-colors">
+            <Link href={legal.terms} className="hover:text-background transition-colors">
               Kullanım Şartları
             </Link>
           </div>

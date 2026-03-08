@@ -1,5 +1,6 @@
 export const MANAGED_PAGE_SLUGS = [
   { slug: 'anasayfa', title: 'Ana Sayfa', path: '/' },
+  { slug: 'site-ayarlari', title: 'Genel Site Ayarlari', path: '/admin/site-ayarlari' },
   { slug: 'galeri', title: 'Galeri', path: '/galeri' },
   { slug: 'hakkimizda', title: 'Hakkimizda', path: '/hakkimizda' },
   { slug: 'koleksiyonlar', title: 'Koleksiyonlar', path: '/koleksiyonlar' },
@@ -18,5 +19,6 @@ export function routePathToSlug(pathname: string): string {
 
 export function slugToPath(slug: string): string {
   if (slug === 'anasayfa') return '/'
+  if (slug === 'site-ayarlari') return '/admin'
   return `/${slug}`
 }

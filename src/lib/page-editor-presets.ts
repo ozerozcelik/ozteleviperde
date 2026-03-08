@@ -31,6 +31,70 @@ function createPreset(preset: PageEditorPreset): PageEditorPreset {
 }
 
 const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
+  'site-ayarlari': createPreset({
+    slug: 'site-ayarlari',
+    source: 'Merkezi site ayarlari',
+    description:
+      'Bu admin-ozel sayfa; iletisim bilgileri, sosyal medya linkleri, calisma saatleri ve yasal linkler gibi tum sitede tekrar eden ayarlari yonetmek icin kullanilir.',
+    title: 'Genel Site Ayarlari',
+    seoTitle: '',
+    seoDescription: '',
+    heroTitle: '',
+    heroSubtitle: '',
+    heroImage: '',
+    heroCtaText: '',
+    heroCtaLink: '',
+    htmlContent: '',
+    schemaJson: '',
+    sections: [
+      {
+        key: 'contact-details',
+        type: 'features',
+        title: 'Iletisim Bilgileri',
+        content: 'Tum sayfalardaki telefon, e-posta, adres ve WhatsApp cagrilari bu veriyi kullanir.',
+        items: [
+          'E-posta - info@oztelevi.com',
+          'Telefon - +90 (212) 555 0123',
+          'Adres - Teşvikiye Mah., Bağdar Caddesi No:42, Şişli, İstanbul',
+        ],
+      },
+      {
+        key: 'social-links',
+        type: 'features',
+        title: 'Sosyal Medya Linkleri',
+        content: 'Footer, JSON-LD ve sosyal butonlarda gorunen baglantilar.',
+        items: [
+          'Instagram - https://instagram.com/oztelevi',
+          'Facebook - https://facebook.com/oztelevi',
+          'Pinterest - https://pinterest.com/oztelevi',
+          'YouTube - https://youtube.com/@oztelevi',
+        ],
+      },
+      {
+        key: 'business-hours',
+        type: 'features',
+        title: 'Calisma Saatleri',
+        content: 'Structured data ve SSS fallback metinlerinde kullanilir.',
+        items: [
+          'Hafta Ici Acilis - 09:00',
+          'Hafta Ici Kapanis - 18:00',
+          'Cumartesi Acilis - 10:00',
+          'Cumartesi Kapanis - 16:00',
+        ],
+      },
+      {
+        key: 'legal-links',
+        type: 'features',
+        title: 'Yasal Linkler',
+        content: 'Footer ve uyelik formlarinda kullanilan baglantilar.',
+        items: [
+          'Gizlilik - #',
+          'Kullanim Sartlari - #',
+          'Cerezler - #',
+        ],
+      },
+    ],
+  }),
   anasayfa: createPreset({
     slug: 'anasayfa',
     source: 'Kod tabanli canli anasayfa',

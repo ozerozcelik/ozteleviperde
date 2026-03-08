@@ -214,7 +214,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       },
     })
 
-    revalidatePath(slugToPath(slug))
+    if (slug === 'site-ayarlari') {
+      for (const managedPage of MANAGED_PAGE_SLUGS) {
+        if (managedPage.slug === 'site-ayarlari') continue
+        revalidatePath(managedPage.path)
+      }
+      revalidatePath('/', 'layout')
+    } else {
+      revalidatePath(slugToPath(slug))
+    }
 
     return NextResponse.json({
       success: true,

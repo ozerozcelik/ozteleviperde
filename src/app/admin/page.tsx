@@ -64,6 +64,7 @@ import type {
   ProductFieldConfig,
   ProductFormState,
 } from '@/components/admin/types'
+import { MANAGED_PAGE_SLUGS } from '@/lib/content-pages'
 import type { PageEditorPreset } from '@/lib/page-editor-presets'
 import type { MediaStorageMode } from '@/lib/media-storage'
 
@@ -212,6 +213,10 @@ function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) 
     },
     sections: resolvedSections,
   }
+}
+
+function getManagedPagePath(slug: string) {
+  return MANAGED_PAGE_SLUGS.find((page) => page.slug === slug)?.path || `/${slug}`
 }
 
 interface QuoteRequest {
@@ -1993,7 +1998,7 @@ export default function AdminPage() {
                           {page.status === 'published' ? 'Yayinda' : 'Taslak'}
                         </Badge>
                       </div>
-                      <p className="text-xs opacity-70 mt-1">/{page.slug === 'anasayfa' ? '' : page.slug}</p>
+                      <p className="text-xs opacity-70 mt-1">{getManagedPagePath(page.slug)}</p>
                     </button>
                   ))}
                 </div>

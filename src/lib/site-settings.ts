@@ -18,6 +18,11 @@ export type SiteSettings = {
     whatsapp: string
     youtube: string
   }
+  legal: {
+    privacy: string
+    terms: string
+    cookies: string
+  }
   structuredData: {
     contactType: string
     priceRange: string
@@ -56,6 +61,22 @@ function findSectionByKey(sections: PageEditorSection[], key: string) {
   return sections.find((section) => (section.key || '').trim().toLowerCase() === key)
 }
 
+function parseLabeledItems(items: string[] | undefined) {
+  const map = new Map<string, string>()
+
+  for (const item of items || []) {
+    const [rawLabel, ...rest] = item.split(' - ')
+    const label = rawLabel?.trim().toLowerCase()
+    const value = rest.join(' - ').trim()
+
+    if (label && value) {
+      map.set(label, value)
+    }
+  }
+
+  return map
+}
+
 function toTelHref(phone: string) {
   const digits = phone.replace(/[^\d+]/g, '')
   return `tel:${digits}`
@@ -77,6 +98,8 @@ function toAddressLines(address: string) {
 export const getSiteSettings = cache(async (): Promise<SiteSettings> => {
   const homePreset = getPageEditorPreset('anasayfa')
   const presetContactItems = homePreset?.sections.find((section) => section.key === 'contact-cta')?.items || []
+  const settingsPreset = getPageEditorPreset('site-ayarlari')
+  const settingsPresetSections = settingsPreset?.sections || []
   const databaseUrl = process.env.DATABASE_URL ?? ''
 
   const canUseDatabase =
@@ -97,9 +120,26 @@ export const getSiteSettings = cache(async (): Promise<SiteSettings> => {
   const contactSection = findSectionByKey(publishedSections, 'contact-cta')
   const contactItems = contactSection?.items || presetContactItems
 
-  const email = contactItems[0]?.trim() || DEFAULT_CONTACT.email
-  const phoneDisplay = contactItems[1]?.trim() || DEFAULT_CONTACT.phoneDisplay
-  const address = contactItems[2]?.trim() || DEFAULT_CONTACT.address
+  const settingsPage = canUseDatabase
+    ? await db.contentPage.findUnique({
+        where: { slug: 'site-ayarlari' },
+        select: {
+          sections: true,
+          status: true,
+        },
+      })
+    : null
+
+  const settingsSections =
+    settingsPage?.status === 'published' ? parseSections(settingsPage.sections) : settingsPresetSections
+  const contactSettings = parseLabeledItems(findSectionByKey(settingsSections, 'contact-details')?.items)
+  const socialSettings = parseLabeledItems(findSectionByKey(settingsSections, 'social-links')?.items)
+  const hourSettings = parseLabeledItems(findSectionByKey(settingsSections, 'business-hours')?.items)
+  const legalSettings = parseLabeledItems(findSectionByKey(settingsSections, 'legal-links')?.items)
+
+  const email = contactSettings.get('e-posta') || contactItems[0]?.trim() || DEFAULT_CONTACT.email
+  const phoneDisplay = contactSettings.get('telefon') || contactItems[1]?.trim() || DEFAULT_CONTACT.phoneDisplay
+  const address = contactSettings.get('adres') || contactItems[2]?.trim() || DEFAULT_CONTACT.address
   const whatsappPhone = toWhatsAppPhone(phoneDisplay)
 
   return {
@@ -112,20 +152,28 @@ export const getSiteSettings = cache(async (): Promise<SiteSettings> => {
       addressLines: toAddressLines(address),
     },
     social: {
-      ...DEFAULT_SOCIAL,
+      instagram: socialSettings.get('instagram') || DEFAULT_SOCIAL.instagram,
+      facebook: socialSettings.get('facebook') || DEFAULT_SOCIAL.facebook,
+      pinterest: socialSettings.get('pinterest') || DEFAULT_SOCIAL.pinterest,
+      youtube: socialSettings.get('youtube') || DEFAULT_SOCIAL.youtube,
       whatsapp: `https://wa.me/${whatsappPhone}`,
+    },
+    legal: {
+      privacy: legalSettings.get('gizlilik') || '#',
+      terms: legalSettings.get('kullanim sartlari') || '#',
+      cookies: legalSettings.get('cerezler') || '#',
     },
     structuredData: {
       contactType: 'customer service',
       priceRange: '$$',
       openingHours: {
         weekdays: {
-          opens: '09:00',
-          closes: '18:00',
+          opens: hourSettings.get('hafta ici acilis') || '09:00',
+          closes: hourSettings.get('hafta ici kapanis') || '18:00',
         },
         saturday: {
-          opens: '10:00',
-          closes: '16:00',
+          opens: hourSettings.get('cumartesi acilis') || '10:00',
+          closes: hourSettings.get('cumartesi kapanis') || '16:00',
         },
       },
     },

@@ -10,6 +10,7 @@ import { useFavorites } from '@/contexts/FavoritesContext'
 import { useCart } from '@/contexts/CartContext'
 import { CartIcon } from '@/components/CartIcon'
 import { CartDrawer } from '@/components/CartDrawer'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import type { HomePageContent } from '@/lib/home-page-content'
 
 // ============================================
@@ -1330,6 +1331,7 @@ function CTASection({ content }: { content: HomePageContent['contact'] }) {
 // Footer Component
 // ============================================
 function Footer() {
+  const { legal } = useSiteSettings()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -1477,13 +1479,17 @@ function Footer() {
             © 2024 ÖzTelevi. Tüm hakları saklıdır.
           </p>
           <div className="flex items-center gap-6">
-            {['Gizlilik', 'Kullanım Şartları', 'Çerezler'].map((item) => (
+            {[
+              { label: 'Gizlilik', href: legal.privacy },
+              { label: 'Kullanım Şartları', href: legal.terms },
+              { label: 'Çerezler', href: legal.cookies },
+            ].map((item) => (
               <a
-                key={item}
-                href="#"
+                key={item.label}
+                href={item.href}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
               >
-                {item}
+                {item.label}
               </a>
             ))}
           </div>
