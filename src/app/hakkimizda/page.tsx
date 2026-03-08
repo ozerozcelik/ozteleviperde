@@ -119,18 +119,28 @@ function collectParagraphs(
 
 function parseTeamMembers(items: string[] | undefined, fallback: TeamMember[]) {
   const parsed = (items || [])
-    .map((item) => {
+    .map((item, index) => {
+      const fallbackByIndex = fallback[index]
+
       if (item.includes('|')) {
         const [name, role, bio, image] = item.split('|').map((part) => part.trim())
-        return { name, role, bio, image }
+        const fallbackByName = fallback.find((member) => member.name === name)
+        const existing = fallbackByName || fallbackByIndex
+
+        return {
+          name: name || existing?.name || '',
+          role: role || existing?.role || '',
+          bio: bio || existing?.bio || '',
+          image: image || existing?.image || '/images/hero.png',
+        }
       }
 
       const [name, role] = item.split(' - ').map((part) => part.trim())
-      const existing = fallback.find((member) => member.name === name)
+      const existing = fallback.find((member) => member.name === name) || fallbackByIndex
 
       return {
-        name,
-        role,
+        name: name || existing?.name || '',
+        role: role || existing?.role || '',
         bio: existing?.bio || '',
         image: existing?.image || '/images/hero.png',
       }

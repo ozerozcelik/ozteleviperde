@@ -2836,152 +2836,170 @@ export default function AdminPage() {
                                     )
                                   })()
                                 ) : section.key === 'about-team' ? (
-                                  <div className="space-y-4">
-                                    {(section.items && section.items.length > 0 ? section.items : ['']).map((item: string, i: number) => {
-                                      const member = parseTeamMemberItem(item)
+                                  (() => {
+                                    const baselineTeamItems =
+                                      pageBaseline?.sections.find((entry) => entry.key === 'about-team')?.items || []
+                                    const teamItems = Array.from(
+                                      { length: Math.max(1, baselineTeamItems.length, section.items?.length || 0) },
+                                      (_, itemIndex) => section.items?.[itemIndex] ?? baselineTeamItems[itemIndex] ?? ''
+                                    )
 
-                                      return (
-                                        <div key={i} className="rounded-xl border border-stone-200 p-4 space-y-3">
-                                          <div className="flex items-center justify-between gap-3">
-                                            <Label>{`Ekip Üyesi ${i + 1}`}</Label>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => {
-                                                const newSections = [...pageSections]
-                                                newSections[index].items = (newSections[index].items || []).filter((_: any, xi: number) => xi !== i)
-                                                setSectionsWithHistory(newSections)
-                                              }}
-                                            >
-                                              Kaldır
-                                            </Button>
-                                          </div>
-                                          <div className="grid gap-3 md:grid-cols-2">
-                                            <Input
-                                              placeholder="İsim"
-                                              value={member.name}
-                                              onChange={(e) => {
-                                                const newSections = [...pageSections]
-                                                const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
-                                                const nextItems = [...(newSections[index].items || [])]
-                                                nextItems[i] = formatTeamMemberItem(
-                                                  e.target.value,
-                                                  currentMember.role,
-                                                  currentMember.bio,
-                                                  currentMember.image
-                                                )
-                                                newSections[index].items = nextItems
-                                                setSectionsWithHistory(newSections)
-                                              }}
-                                            />
-                                            <Input
-                                              placeholder="Görev / Unvan"
-                                              value={member.role}
-                                              onChange={(e) => {
-                                                const newSections = [...pageSections]
-                                                const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
-                                                const nextItems = [...(newSections[index].items || [])]
-                                                nextItems[i] = formatTeamMemberItem(
-                                                  currentMember.name,
-                                                  e.target.value,
-                                                  currentMember.bio,
-                                                  currentMember.image
-                                                )
-                                                newSections[index].items = nextItems
-                                                setSectionsWithHistory(newSections)
-                                              }}
-                                            />
-                                          </div>
-                                          <Textarea
-                                            rows={3}
-                                            placeholder="Kısa açıklama"
-                                            value={member.bio}
-                                            onChange={(e) => {
-                                              const newSections = [...pageSections]
-                                              const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
-                                              const nextItems = [...(newSections[index].items || [])]
-                                              nextItems[i] = formatTeamMemberItem(
-                                                currentMember.name,
-                                                currentMember.role,
-                                                e.target.value,
-                                                currentMember.image
-                                              )
-                                              newSections[index].items = nextItems
-                                              setSectionsWithHistory(newSections)
-                                            }}
-                                          />
-                                          <div className="flex gap-2">
-                                            <Input
-                                              placeholder="Görsel URL"
-                                              value={member.image}
-                                              onChange={(e) => {
-                                                const newSections = [...pageSections]
-                                                const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
-                                                const nextItems = [...(newSections[index].items || [])]
-                                                nextItems[i] = formatTeamMemberItem(
-                                                  currentMember.name,
-                                                  currentMember.role,
-                                                  currentMember.bio,
-                                                  e.target.value
-                                                )
-                                                newSections[index].items = nextItems
-                                                setSectionsWithHistory(newSections)
-                                              }}
-                                            />
-                                            <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded flex items-center">
-                                              <Upload className="w-4 h-4" />
-                                              <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                onChange={async (e) => {
-                                                  const file = e.target.files?.[0]
-                                                  if (!file) return
-                                                  setIsUploading(true)
-                                                  try {
-                                                    const uploadedUrl = await uploadMediaAsset(file, {
-                                                      folder: `oztelevi/pages/${selectedPageSlug}`,
-                                                      tags: ['page', selectedPageSlug, 'about-team-member'],
-                                                    })
+                                    return (
+                                      <div className="space-y-4">
+                                        {teamItems.map((item: string, i: number) => {
+                                          const member = parseTeamMemberItem(item)
+                                          const fallbackMember = parseTeamMemberItem(baselineTeamItems[i])
+                                          const resolvedMember = {
+                                            name: member.name || fallbackMember.name,
+                                            role: member.role || fallbackMember.role,
+                                            bio: member.bio || fallbackMember.bio,
+                                            image: member.image || fallbackMember.image,
+                                          }
+
+                                          return (
+                                            <div key={i} className="rounded-xl border border-stone-200 p-4 space-y-3">
+                                              <div className="flex items-center justify-between gap-3">
+                                                <Label>{`Ekip Üyesi ${i + 1}`}</Label>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => {
                                                     const newSections = [...pageSections]
-                                                    const currentMember = parseTeamMemberItem(newSections[index].items?.[i])
-                                                    const nextItems = [...(newSections[index].items || [])]
+                                                    newSections[index].items = teamItems.filter((_: any, xi: number) => xi !== i)
+                                                    setSectionsWithHistory(newSections)
+                                                  }}
+                                                >
+                                                  Kaldır
+                                                </Button>
+                                              </div>
+                                              <div className="grid gap-3 md:grid-cols-2">
+                                                <Input
+                                                  placeholder="İsim"
+                                                  value={resolvedMember.name}
+                                                  onChange={(e) => {
+                                                    const newSections = [...pageSections]
+                                                    const currentMember = parseTeamMemberItem(teamItems[i])
+                                                    const nextItems = [...teamItems]
                                                     nextItems[i] = formatTeamMemberItem(
-                                                      currentMember.name,
-                                                      currentMember.role,
-                                                      currentMember.bio,
-                                                      uploadedUrl
+                                                      e.target.value,
+                                                      currentMember.role || fallbackMember.role,
+                                                      currentMember.bio || fallbackMember.bio,
+                                                      currentMember.image || fallbackMember.image
                                                     )
                                                     newSections[index].items = nextItems
                                                     setSectionsWithHistory(newSections)
-                                                  } catch (error) {
-                                                    alert(error instanceof Error ? error.message : 'Yukleme hatasi')
-                                                  } finally {
-                                                    setIsUploading(false)
-                                                  }
+                                                  }}
+                                                />
+                                                <Input
+                                                  placeholder="Görev / Unvan"
+                                                  value={resolvedMember.role}
+                                                  onChange={(e) => {
+                                                    const newSections = [...pageSections]
+                                                    const currentMember = parseTeamMemberItem(teamItems[i])
+                                                    const nextItems = [...teamItems]
+                                                    nextItems[i] = formatTeamMemberItem(
+                                                      currentMember.name || fallbackMember.name,
+                                                      e.target.value,
+                                                      currentMember.bio || fallbackMember.bio,
+                                                      currentMember.image || fallbackMember.image
+                                                    )
+                                                    newSections[index].items = nextItems
+                                                    setSectionsWithHistory(newSections)
+                                                  }}
+                                                />
+                                              </div>
+                                              <Textarea
+                                                rows={3}
+                                                placeholder="Kısa açıklama"
+                                                value={resolvedMember.bio}
+                                                onChange={(e) => {
+                                                  const newSections = [...pageSections]
+                                                  const currentMember = parseTeamMemberItem(teamItems[i])
+                                                  const nextItems = [...teamItems]
+                                                  nextItems[i] = formatTeamMemberItem(
+                                                    currentMember.name || fallbackMember.name,
+                                                    currentMember.role || fallbackMember.role,
+                                                    e.target.value,
+                                                    currentMember.image || fallbackMember.image
+                                                  )
+                                                  newSections[index].items = nextItems
+                                                  setSectionsWithHistory(newSections)
                                                 }}
-                                                disabled={isUploading}
                                               />
-                                            </label>
-                                          </div>
-                                          {member.image && (
-                                            <img src={member.image} alt={member.name || `Ekip üyesi ${i + 1}`} className="w-24 h-24 object-cover rounded-xl" />
-                                          )}
-                                        </div>
-                                      )
-                                    })}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        const newSections = [...pageSections]
-                                        newSections[index].items = [...(newSections[index].items || []), '']
-                                        setSectionsWithHistory(newSections)
-                                      }}
-                                    >
-                                      + Ekip Üyesi Ekle
-                                    </Button>
-                                  </div>
+                                              <div className="flex gap-2">
+                                                <Input
+                                                  placeholder="Görsel URL"
+                                                  value={resolvedMember.image}
+                                                  onChange={(e) => {
+                                                    const newSections = [...pageSections]
+                                                    const currentMember = parseTeamMemberItem(teamItems[i])
+                                                    const nextItems = [...teamItems]
+                                                    nextItems[i] = formatTeamMemberItem(
+                                                      currentMember.name || fallbackMember.name,
+                                                      currentMember.role || fallbackMember.role,
+                                                      currentMember.bio || fallbackMember.bio,
+                                                      e.target.value
+                                                    )
+                                                    newSections[index].items = nextItems
+                                                    setSectionsWithHistory(newSections)
+                                                  }}
+                                                />
+                                                <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded flex items-center">
+                                                  <Upload className="w-4 h-4" />
+                                                  <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                      const file = e.target.files?.[0]
+                                                      if (!file) return
+                                                      setIsUploading(true)
+                                                      try {
+                                                        const uploadedUrl = await uploadMediaAsset(file, {
+                                                          folder: `oztelevi/pages/${selectedPageSlug}`,
+                                                          tags: ['page', selectedPageSlug, 'about-team-member'],
+                                                        })
+                                                        const newSections = [...pageSections]
+                                                        const currentMember = parseTeamMemberItem(teamItems[i])
+                                                        const nextItems = [...teamItems]
+                                                        nextItems[i] = formatTeamMemberItem(
+                                                          currentMember.name || fallbackMember.name,
+                                                          currentMember.role || fallbackMember.role,
+                                                          currentMember.bio || fallbackMember.bio,
+                                                          uploadedUrl
+                                                        )
+                                                        newSections[index].items = nextItems
+                                                        setSectionsWithHistory(newSections)
+                                                      } catch (error) {
+                                                        alert(error instanceof Error ? error.message : 'Yukleme hatasi')
+                                                      } finally {
+                                                        setIsUploading(false)
+                                                      }
+                                                    }}
+                                                    disabled={isUploading}
+                                                  />
+                                                </label>
+                                              </div>
+                                              {resolvedMember.image && (
+                                                <img src={resolvedMember.image} alt={resolvedMember.name || `Ekip üyesi ${i + 1}`} className="w-24 h-24 object-cover rounded-xl" />
+                                              )}
+                                            </div>
+                                          )
+                                        })}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            const newSections = [...pageSections]
+                                            newSections[index].items = [...teamItems, '']
+                                            setSectionsWithHistory(newSections)
+                                          }}
+                                        >
+                                          + Ekip Üyesi Ekle
+                                        </Button>
+                                      </div>
+                                    )
+                                  })()
                                 ) : section.key === 'about-mission-vision' ? (
                                   <div className="space-y-3">
                                     {[
