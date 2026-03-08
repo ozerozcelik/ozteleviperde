@@ -57,6 +57,14 @@ function GirisPageContent() {
   // Get error from URL params (from NextAuth)
   useEffect(() => {
     const errorParam = searchParams.get('error')
+    const resetParam = searchParams.get('reset')
+
+    if (resetParam === 'success') {
+      setSuccess('Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.')
+      setError(null)
+      return
+    }
+
     if (errorParam) {
       setError('E-posta veya şifre hatalı')
     }
@@ -282,12 +290,12 @@ function GirisPageContent() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Label htmlFor="login-password">Şifre</Label>
-                        <a
-                          href={`mailto:${contact.email}?subject=${encodeURIComponent('Şifre yardımı')}`}
+                        <Link
+                          href="/sifremi-unuttum"
                           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                         >
                           Şifremi Unuttum
-                        </a>
+                        </Link>
                       </div>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
