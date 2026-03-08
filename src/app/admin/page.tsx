@@ -223,7 +223,7 @@ function formatFeatureItem(title: string, description: string) {
   if (!normalizedTitle) return normalizedDescription
   if (!normalizedDescription) return ''
 
-  return `${normalizedTitle} - ${normalizedDescription}`
+  return `${title} - ${description}`
 }
 
 function parseTeamMemberItem(item: string | undefined) {
@@ -238,9 +238,9 @@ function parseTeamMemberItem(item: string | undefined) {
 }
 
 function formatTeamMemberItem(name: string, role: string, bio: string, image: string) {
-  const parts = [name.trim(), role.trim(), bio.trim(), image.trim()]
+  const parts = [name, role, bio, image]
 
-  while (parts.length > 0 && !parts[parts.length - 1]) {
+  while (parts.length > 0 && !parts[parts.length - 1].trim()) {
     parts.pop()
   }
 
@@ -263,7 +263,7 @@ function formatQuoteContent(author: string, role: string) {
   if (!normalizedAuthor) return normalizedRole
   if (!normalizedRole) return normalizedAuthor
 
-  return `${normalizedAuthor} | ${normalizedRole}`
+  return `${author} | ${role}`
 }
 
 function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) {
@@ -2753,77 +2753,88 @@ export default function AdminPage() {
                                   }}
                                 />
                                 {section.key === 'about-story' ? (
-                                  <div className="space-y-3">
-                                    <div className="flex gap-2">
-                                      <Input
-                                        placeholder="Hikaye görseli URL"
-                                        value={section.image || ''}
-                                        onChange={(e) => {
-                                          const newSections = [...pageSections]
-                                          newSections[index].image = e.target.value
-                                          setSectionsWithHistory(newSections)
-                                        }}
-                                      />
-                                      <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded flex items-center">
-                                        <Upload className="w-4 h-4" />
-                                        <input
-                                          type="file"
-                                          accept="image/*"
-                                          className="hidden"
-                                          onChange={async (e) => {
-                                            const file = e.target.files?.[0]
-                                            if (!file) return
-                                            setIsUploading(true)
-                                            try {
-                                              const uploadedUrl = await uploadMediaAsset(file, {
-                                                folder: `oztelevi/pages/${selectedPageSlug}`,
-                                                tags: ['page', selectedPageSlug, 'about-story-image'],
-                                              })
+                                  (() => {
+                                    const baselineStoryItems =
+                                      pageBaseline?.sections.find((entry) => entry.key === 'about-story')?.items || []
+                                    const storyItems = Array.from(
+                                      { length: Math.max(2, baselineStoryItems.length, section.items?.length || 0) },
+                                      (_, itemIndex) => section.items?.[itemIndex] ?? baselineStoryItems[itemIndex] ?? ''
+                                    )
+
+                                    return (
+                                      <div className="space-y-3">
+                                        <div className="flex gap-2">
+                                          <Input
+                                            placeholder="Hikaye görseli URL"
+                                            value={section.image || ''}
+                                            onChange={(e) => {
                                               const newSections = [...pageSections]
-                                              newSections[index].image = uploadedUrl
+                                              newSections[index].image = e.target.value
                                               setSectionsWithHistory(newSections)
-                                            } catch (error) {
-                                              alert(error instanceof Error ? error.message : 'Yukleme hatasi')
-                                            } finally {
-                                              setIsUploading(false)
-                                            }
-                                          }}
-                                          disabled={isUploading}
-                                        />
-                                      </label>
-                                    </div>
-                                    {section.image && (
-                                      <img src={section.image} alt="Hikaye görseli" className="w-32 h-32 object-cover rounded" />
-                                    )}
-                                    {(section.items && section.items.length > 0 ? section.items : ['', '']).map((item: string, i: number) => (
-                                      <div key={i} className="space-y-2">
-                                        <Label>{`Paragraf ${i + 2}`}</Label>
-                                        <Textarea
-                                          rows={4}
-                                          placeholder={`Paragraf ${i + 2}`}
-                                          value={item || ''}
-                                          onChange={(e) => {
+                                            }}
+                                          />
+                                          <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded flex items-center">
+                                            <Upload className="w-4 h-4" />
+                                            <input
+                                              type="file"
+                                              accept="image/*"
+                                              className="hidden"
+                                              onChange={async (e) => {
+                                                const file = e.target.files?.[0]
+                                                if (!file) return
+                                                setIsUploading(true)
+                                                try {
+                                                  const uploadedUrl = await uploadMediaAsset(file, {
+                                                    folder: `oztelevi/pages/${selectedPageSlug}`,
+                                                    tags: ['page', selectedPageSlug, 'about-story-image'],
+                                                  })
+                                                  const newSections = [...pageSections]
+                                                  newSections[index].image = uploadedUrl
+                                                  setSectionsWithHistory(newSections)
+                                                } catch (error) {
+                                                  alert(error instanceof Error ? error.message : 'Yukleme hatasi')
+                                                } finally {
+                                                  setIsUploading(false)
+                                                }
+                                              }}
+                                              disabled={isUploading}
+                                            />
+                                          </label>
+                                        </div>
+                                        {section.image && (
+                                          <img src={section.image} alt="Hikaye görseli" className="w-32 h-32 object-cover rounded" />
+                                        )}
+                                        {storyItems.map((item: string, i: number) => (
+                                          <div key={i} className="space-y-2">
+                                            <Label>{`Paragraf ${i + 2}`}</Label>
+                                            <Textarea
+                                              rows={4}
+                                              placeholder={`Paragraf ${i + 2}`}
+                                              value={item || ''}
+                                              onChange={(e) => {
+                                                const newSections = [...pageSections]
+                                                const nextItems = [...storyItems]
+                                                nextItems[i] = e.target.value
+                                                newSections[index].items = nextItems
+                                                setSectionsWithHistory(newSections)
+                                              }}
+                                            />
+                                          </div>
+                                        ))}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
                                             const newSections = [...pageSections]
-                                            const nextItems = [...(newSections[index].items || ['', ''])]
-                                            nextItems[i] = e.target.value
-                                            newSections[index].items = nextItems
+                                            newSections[index].items = [...storyItems, '']
                                             setSectionsWithHistory(newSections)
                                           }}
-                                        />
+                                        >
+                                          + Paragraf Ekle
+                                        </Button>
                                       </div>
-                                    ))}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        const newSections = [...pageSections]
-                                        newSections[index].items = [...(newSections[index].items || []), '']
-                                        setSectionsWithHistory(newSections)
-                                      }}
-                                    >
-                                      + Paragraf Ekle
-                                    </Button>
-                                  </div>
+                                    )
+                                  })()
                                 ) : section.key === 'about-team' ? (
                                   <div className="space-y-4">
                                     {(section.items && section.items.length > 0 ? section.items : ['']).map((item: string, i: number) => {
