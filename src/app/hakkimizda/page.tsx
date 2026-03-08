@@ -73,11 +73,22 @@ function normalizeText(value: string | null | undefined, fallback: string) {
 
 function parseFeatureItems(items: string[] | undefined, fallback: ContentPair[]) {
   const parsed = (items || [])
-    .map((item) => {
+    .map((item, index) => {
       const [title, ...rest] = item.split(' - ')
+      const normalizedTitle = title?.trim() || fallback[index]?.title || ''
+      const description = rest.join(' - ').trim()
+
+      if (normalizedTitle && description) {
+        return {
+          title: normalizedTitle,
+          description,
+        }
+      }
+
+      const plainText = item.trim()
       return {
-        title: title?.trim() || '',
-        description: rest.join(' - ').trim(),
+        title: normalizedTitle,
+        description: plainText,
       }
     })
     .filter((item) => item.title.length > 0 && item.description.length > 0)

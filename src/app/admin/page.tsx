@@ -198,6 +198,34 @@ function normalizeSectionKey(section: Pick<PageSection, 'key' | 'title'> | undef
   return title ? `title:${title}` : ''
 }
 
+function parseFeatureItem(item: string | undefined, fallbackTitle: string) {
+  const [title, ...rest] = (item || '').split(' - ')
+  const normalizedTitle = title?.trim()
+  const description = rest.join(' - ').trim()
+
+  if (normalizedTitle && description) {
+    return {
+      title: normalizedTitle,
+      description,
+    }
+  }
+
+  return {
+    title: fallbackTitle,
+    description: (item || '').trim(),
+  }
+}
+
+function formatFeatureItem(title: string, description: string) {
+  const normalizedTitle = title.trim()
+  const normalizedDescription = description.trim()
+
+  if (!normalizedTitle) return normalizedDescription
+  if (!normalizedDescription) return ''
+
+  return `${normalizedTitle} - ${normalizedDescription}`
+}
+
 function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) {
   const currentSections = parsePageSections(page.sections)
 
@@ -2590,45 +2618,101 @@ export default function AdminPage() {
                                     setSectionsWithHistory(newSections)
                                   }}
                                 />
-                                <div className="space-y-2">
-                                  {(section.items || ['', '', '']).map((item: string, i: number) => (
-                                    <div key={i} className="flex gap-2">
-                                      <Input
-                                        placeholder={`Özellik ${i + 1}`}
-                                        value={item || ''}
-                                        onChange={(e) => {
-                                          const newSections = [...pageSections]
-                                          if (!newSections[index].items) newSections[index].items = ['', '', '']
-                                          newSections[index].items[i] = e.target.value
-                                          setSectionsWithHistory(newSections)
-                                        }}
-                                      />
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          const newSections = [...pageSections]
-                                          newSections[index].items = (newSections[index].items || []).filter((_: any, xi: number) => xi !== i)
-                                          setSectionsWithHistory(newSections)
-                                        }}
-                                      >
-                                        X
-                                      </Button>
-                                    </div>
-                                  ))}
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      const newSections = [...pageSections]
-                                      if (!newSections[index].items) newSections[index].items = []
-                                      newSections[index].items = [...newSections[index].items, '']
-                                      setSectionsWithHistory(newSections)
-                                    }}
-                                  >
-                                    + Özellik Ekle
-                                  </Button>
-                                </div>
+                                {section.key === 'about-story' ? (
+                                  <div className="space-y-3">
+                                    {(section.items || ['', '']).map((item: string, i: number) => (
+                                      <div key={i} className="space-y-2">
+                                        <Label>{`Paragraf ${i + 2}`}</Label>
+                                        <Textarea
+                                          rows={4}
+                                          placeholder={`Paragraf ${i + 2}`}
+                                          value={item || ''}
+                                          onChange={(e) => {
+                                            const newSections = [...pageSections]
+                                            const nextItems = [...(newSections[index].items || ['', ''])]
+                                            nextItems[i] = e.target.value
+                                            newSections[index].items = nextItems
+                                            setSectionsWithHistory(newSections)
+                                          }}
+                                        />
+                                      </div>
+                                    ))}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const newSections = [...pageSections]
+                                        newSections[index].items = [...(newSections[index].items || []), '']
+                                        setSectionsWithHistory(newSections)
+                                      }}
+                                    >
+                                      + Paragraf Ekle
+                                    </Button>
+                                  </div>
+                                ) : section.key === 'about-mission-vision' ? (
+                                  <div className="space-y-3">
+                                    {[
+                                      { title: 'Misyonumuz', value: parseFeatureItem(section.items?.[0], 'Misyonumuz').description, index: 0 },
+                                      { title: 'Vizyonumuz', value: parseFeatureItem(section.items?.[1], 'Vizyonumuz').description, index: 1 },
+                                    ].map((item) => (
+                                      <div key={item.title} className="space-y-2">
+                                        <Label>{item.title}</Label>
+                                        <Textarea
+                                          rows={4}
+                                          placeholder={`${item.title} açıklaması`}
+                                          value={item.value}
+                                          onChange={(e) => {
+                                            const newSections = [...pageSections]
+                                            const nextItems = [...(newSections[index].items || ['', ''])]
+                                            nextItems[item.index] = formatFeatureItem(item.title, e.target.value)
+                                            newSections[index].items = nextItems
+                                            setSectionsWithHistory(newSections)
+                                          }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {(section.items || ['', '', '']).map((item: string, i: number) => (
+                                      <div key={i} className="flex gap-2">
+                                        <Input
+                                          placeholder={`Özellik ${i + 1}`}
+                                          value={item || ''}
+                                          onChange={(e) => {
+                                            const newSections = [...pageSections]
+                                            if (!newSections[index].items) newSections[index].items = ['', '', '']
+                                            newSections[index].items[i] = e.target.value
+                                            setSectionsWithHistory(newSections)
+                                          }}
+                                        />
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const newSections = [...pageSections]
+                                            newSections[index].items = (newSections[index].items || []).filter((_: any, xi: number) => xi !== i)
+                                            setSectionsWithHistory(newSections)
+                                          }}
+                                        >
+                                          X
+                                        </Button>
+                                      </div>
+                                    ))}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const newSections = [...pageSections]
+                                        if (!newSections[index].items) newSections[index].items = []
+                                        newSections[index].items = [...newSections[index].items, '']
+                                        setSectionsWithHistory(newSections)
+                                      }}
+                                    >
+                                      + Özellik Ekle
+                                    </Button>
+                                  </div>
+                                )}
                               </>
                             )}
 
