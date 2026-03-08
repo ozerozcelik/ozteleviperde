@@ -122,6 +122,25 @@ function parseTeamMembers(items: string[] | undefined, fallback: TeamMember[]) {
     .map((item, index) => {
       const fallbackByIndex = fallback[index]
 
+      try {
+        const parsedItem = JSON.parse(item) as Partial<TeamMember>
+        if (parsedItem && typeof parsedItem === 'object' && !Array.isArray(parsedItem)) {
+          const fallbackByName = parsedItem.name
+            ? fallback.find((member) => member.name === parsedItem.name)
+            : undefined
+          const existing = fallbackByName || fallbackByIndex
+
+          return {
+            name: parsedItem.name || existing?.name || '',
+            role: parsedItem.role || existing?.role || '',
+            bio: parsedItem.bio || existing?.bio || '',
+            image: parsedItem.image || existing?.image || '/images/hero.png',
+          }
+        }
+      } catch {
+        // Legacy string records are still supported.
+      }
+
       if (item.includes('|')) {
         const [name, role, bio, image] = item.split('|').map((part) => part.trim())
         const fallbackByName = fallback.find((member) => member.name === name)
