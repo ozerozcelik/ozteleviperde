@@ -340,6 +340,45 @@ function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) 
   }
 }
 
+function buildManagedPageFallback(slug: string, title: string): ContentPage {
+  const timestamp = new Date(0).toISOString()
+
+  return {
+    id: `managed-${slug}`,
+    slug,
+    title,
+    status: 'draft',
+    seoTitle: null,
+    seoDescription: null,
+    heroTitle: null,
+    heroSubtitle: null,
+    heroImage: null,
+    heroCtaText: null,
+    heroCtaLink: null,
+    sections: null,
+    htmlContent: null,
+    schemaJson: null,
+    updatedAt: timestamp,
+    publishedAt: null,
+    versions: [],
+  }
+}
+
+function mergeManagedPages(pageList: ContentPage[]) {
+  const pageBySlug = new Map(pageList.map((page) => [page.slug, page]))
+
+  return MANAGED_PAGE_SLUGS.map(({ slug, title }) => {
+    const existing = pageBySlug.get(slug)
+    if (!existing) return buildManagedPageFallback(slug, title)
+
+    return {
+      ...buildManagedPageFallback(slug, title),
+      ...existing,
+      title: existing.title || title,
+    }
+  })
+}
+
 function getManagedPagePath(slug: string) {
   return MANAGED_PAGE_SLUGS.find((page) => page.slug === slug)?.path || `/${slug}`
 }
@@ -436,6 +475,7 @@ export default function AdminPage() {
   const [faqs, setFaqs] = useState<FAQ[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [pages, setPages] = useState<ContentPage[]>([])
+  const [pagesError, setPagesError] = useState('')
   const [selectedPageSlug, setSelectedPageSlug] = useState('anasayfa')
   const [selectedPage, setSelectedPage] = useState<ContentPage | null>(null)
   const [pageBaseline, setPageBaseline] = useState<PageEditorPreset | null>(null)
@@ -586,17 +626,24 @@ export default function AdminPage() {
 
   const fetchPages = useCallback(async () => {
     try {
+      setPagesError('')
       const res = await fetch('/api/admin/pages')
       const data = await res.json()
       if (data.success) {
-        const pageList: ContentPage[] = data.data
+        const pageList = mergeManagedPages(data.data as ContentPage[])
         setPages(pageList)
 
         if (pageList.length > 0 && !pageList.some((page) => page.slug === selectedPageSlug)) {
           setSelectedPageSlug(pageList[0].slug)
         }
+      } else {
+        const fallbackPages = mergeManagedPages([])
+        setPages(fallbackPages)
+        setPagesError(data.error || 'Sayfalar gecici olarak yuklenemedi.')
       }
     } catch (error) {
+      setPages(mergeManagedPages([]))
+      setPagesError('Sayfalar gecici olarak yuklenemedi.')
       console.error('Error fetching pages:', error)
     }
   }, [selectedPageSlug])
@@ -2106,26 +2153,37 @@ export default function AdminPage() {
                 <CardTitle className="text-lg">Yonetilen Sayfalar</CardTitle>
               </CardHeader>
               <CardContent>
+                {pagesError && (
+                  <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    {pagesError}
+                  </div>
+                )}
                 <div className="space-y-2">
-                  {pages.map((page) => (
-                    <button
-                      key={page.id}
-                      onClick={() => setSelectedPageSlug(page.slug)}
-                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
-                        selectedPageSlug === page.slug
-                          ? 'border-stone-900 bg-stone-900 text-white'
-                          : 'border-stone-200 bg-white hover:bg-stone-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm">{page.title}</span>
-                        <Badge variant={page.status === 'published' ? 'default' : 'secondary'}>
-                          {page.status === 'published' ? 'Yayinda' : 'Taslak'}
-                        </Badge>
-                      </div>
-                      <p className="text-xs opacity-70 mt-1">{getManagedPagePath(page.slug)}</p>
-                    </button>
-                  ))}
+                  {pages.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-stone-300 px-3 py-6 text-center text-sm text-stone-500">
+                      Yonetilen sayfa listesi su an bos gorunuyor.
+                    </div>
+                  ) : (
+                    pages.map((page) => (
+                      <button
+                        key={page.id}
+                        onClick={() => setSelectedPageSlug(page.slug)}
+                        className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                          selectedPageSlug === page.slug
+                            ? 'border-stone-900 bg-stone-900 text-white'
+                            : 'border-stone-200 bg-white hover:bg-stone-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-sm">{page.title}</span>
+                          <Badge variant={page.status === 'published' ? 'default' : 'secondary'}>
+                            {page.status === 'published' ? 'Yayinda' : 'Taslak'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs opacity-70 mt-1">{getManagedPagePath(page.slug)}</p>
+                      </button>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
