@@ -64,7 +64,7 @@ import type {
   ProductFormState,
 } from '@/components/admin/types'
 import { MANAGED_PAGE_SLUGS } from '@/lib/content-pages'
-import type { PageEditorPreset } from '@/lib/page-editor-presets'
+import { getPageEditorPreset, type PageEditorPreset } from '@/lib/page-editor-presets'
 import type { MediaStorageMode } from '@/lib/media-storage'
 
 // ============================================
@@ -541,6 +541,7 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [pages, setPages] = useState<ContentPage[]>([])
   const [pagesError, setPagesError] = useState('')
+  const [pageDetailError, setPageDetailError] = useState('')
   const [selectedPageSlug, setSelectedPageSlug] = useState('anasayfa')
   const [selectedPage, setSelectedPage] = useState<ContentPage | null>(null)
   const [pageBaseline, setPageBaseline] = useState<PageEditorPreset | null>(null)
@@ -819,6 +820,7 @@ export default function AdminPage() {
 
   const fetchPageDetail = useCallback(async (slug: string) => {
     try {
+      setPageDetailError('')
       setPageBaseline(null)
       const res = await fetch(`/api/admin/pages/${slug}`)
       const data = await res.json()
@@ -836,11 +838,44 @@ export default function AdminPage() {
         const snapshot = getPageSnapshot(resolvedState.form, resolvedState.sections)
         lastSavedPageSnapshotRef.current = snapshot
         setIsPageDirty(false)
+      } else {
+        const baseline = getPageEditorPreset(slug)
+        const fallbackPage = buildManagedPageFallback(
+          slug,
+          baseline?.title || MANAGED_PAGE_SLUGS.find((page) => page.slug === slug)?.title || slug
+        )
+        const resolvedState = buildEditorState(fallbackPage, baseline)
+
+        setSelectedPage(fallbackPage)
+        setPageBaseline(baseline)
+        setPageForm(resolvedState.form)
+        setSectionHistory([])
+        setSectionFuture([])
+        setSectionsWithHistory(resolvedState.sections, { skipHistory: true })
+        lastSavedPageSnapshotRef.current = getPageSnapshot(resolvedState.form, resolvedState.sections)
+        setIsPageDirty(false)
+        setPageDetailError(data.error || 'Sayfa ayrintisi yuklenemedi. Referans icerik gosteriliyor.')
       }
     } catch (error) {
       console.error('Error fetching page detail:', error)
+      const baseline = getPageEditorPreset(slug)
+      const fallbackPage = buildManagedPageFallback(
+        slug,
+        baseline?.title || MANAGED_PAGE_SLUGS.find((page) => page.slug === slug)?.title || slug
+      )
+      const resolvedState = buildEditorState(fallbackPage, baseline)
+
+      setSelectedPage(fallbackPage)
+      setPageBaseline(baseline)
+      setPageForm(resolvedState.form)
+      setSectionHistory([])
+      setSectionFuture([])
+      setSectionsWithHistory(resolvedState.sections, { skipHistory: true })
+      lastSavedPageSnapshotRef.current = getPageSnapshot(resolvedState.form, resolvedState.sections)
+      setIsPageDirty(false)
+      setPageDetailError('Sayfa ayrintisi yuklenemedi. Referans icerik gosteriliyor.')
     }
-  }, [])
+  }, [getPageSnapshot, setSectionsWithHistory])
 
   const fetchAllData = useCallback(async () => {
     setIsLoading(true)
@@ -2099,6 +2134,12 @@ export default function AdminPage() {
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
+                {pageDetailError && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    {pageDetailError}
+                  </div>
+                )}
+
                 {pageBaseline && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 space-y-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -3266,12 +3307,28 @@ export default function AdminPage() {
                   />
                 </div>
 
+                {selectedPage?.status === 'published' ? (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                    Bu sayfa su an yayinda. On yuzde gorunmesi icin degisikliklerden sonra <strong>Yayini Guncelle</strong> butonunu kullan.
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600">
+                    Bu sayfa taslak durumda. On yuzde gorunmesi icin <strong>Yayina Al</strong> butonunu kullan.
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" onClick={() => handleSavePage(false)} disabled={isSavingPage}>
-                    Taslak Kaydet
-                  </Button>
+                  {selectedPage?.status !== 'published' && (
+                    <Button variant="outline" onClick={() => handleSavePage(false)} disabled={isSavingPage}>
+                      Taslak Kaydet
+                    </Button>
+                  )}
                   <Button onClick={() => handleSavePage(true)} disabled={isSavingPage}>
-                    {isSavingPage ? 'Kaydediliyor...' : 'Yayina Al'}
+                    {isSavingPage
+                      ? 'Kaydediliyor...'
+                      : selectedPage?.status === 'published'
+                        ? 'Yayini Guncelle'
+                        : 'Yayina Al'}
                   </Button>
                 </div>
               </CardContent>
