@@ -8,21 +8,12 @@ import SocialMediaButtons from '@/components/SocialMediaButtons'
 import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
+import { buildManagedCollectionsFromSections, type CollectionItem } from '@/lib/managed-collections'
 
 // ============================================
 // Types
 // ============================================
-interface Collection {
-  id: string
-  name: string
-  slug: string
-  description: string | null
-  image: string | null
-  featured: boolean
-  order: number
-  createdAt: string
-  updatedAt: string
-}
+type Collection = CollectionItem
 
 // ============================================
 // Fallback Collections
@@ -96,83 +87,6 @@ const fallbackCollections: Collection[] = [
   },
 ]
 
-type ManagedSection = {
-  key?: string
-  title?: string
-  content?: string
-  items?: string[]
-  link?: string
-  linkText?: string
-}
-
-function generateCollectionSlug(name: string, index: number) {
-  const normalized = name
-    .toLowerCase()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-
-  return normalized || `koleksiyon-${index + 1}`
-}
-
-function parseManagedSections(raw: string | null | undefined): ManagedSection[] {
-  if (!raw) return []
-
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function parseManagedCollectionItem(item: string | undefined, fallbackImage: string, index: number): Collection {
-  let name = ''
-  let description = ''
-  let image = fallbackImage
-
-  if (item) {
-    try {
-      const parsed = JSON.parse(item) as {
-        title?: unknown
-        description?: unknown
-        image?: unknown
-      }
-
-      if (parsed && typeof parsed === 'object') {
-        name = typeof parsed.title === 'string' ? parsed.title : ''
-        description = typeof parsed.description === 'string' ? parsed.description : ''
-        image = typeof parsed.image === 'string' && parsed.image.trim().length > 0
-          ? parsed.image
-          : fallbackImage
-      }
-    } catch {
-      const [rawName, ...rest] = item.split(' - ')
-      name = rawName.trim()
-      description = rest.join(' - ').trim()
-    }
-  }
-
-  const resolvedName = name || `Ürün ${index + 1}`
-
-  return {
-    id: `managed-${index}`,
-    name: resolvedName,
-    slug: generateCollectionSlug(resolvedName, index),
-    description: description || null,
-    image: image || null,
-    featured: false,
-    order: index,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-}
-
 // ============================================
 // Collections Page Component
 // ============================================
@@ -218,30 +132,12 @@ export default function CollectionsPage() {
     fetchCollections()
   }, [])
 
-  const managedSections = parseManagedSections(managedPage?.sections)
-  const featuredSection = managedSections.find((section) => section.key === 'collections-featured')
-  const allSection = managedSections.find((section) => section.key === 'collections-all')
-  const gallerySection = managedSections.find((section) => section.key === 'collections-gallery')
-  const ctaSection = managedSections.find((section) => section.key === 'collections-cta')
-  const galleryImages = gallerySection?.items || []
-
-  const managedFeaturedCollections = (featuredSection?.items || []).map((item, index) => ({
-    ...parseManagedCollectionItem(item, galleryImages[index] || '', index),
-    featured: true,
-    order: index,
-  }))
-
-  const managedOtherCollections = (allSection?.items || []).map((item, index) => ({
-    ...parseManagedCollectionItem(
-      item,
-      galleryImages[managedFeaturedCollections.length + index] || '',
-      managedFeaturedCollections.length + index
-    ),
-    featured: false,
-    order: managedFeaturedCollections.length + index,
-  }))
-
-  const managedCollections = [...managedFeaturedCollections, ...managedOtherCollections]
+  const {
+    featuredSection,
+    allSection,
+    ctaSection,
+    collections: managedCollections,
+  } = buildManagedCollectionsFromSections(managedPage?.sections)
 
   const navLinks = [
     { href: '/hakkimizda', label: 'Hakkımızda' },
