@@ -26,9 +26,8 @@ const pagePayloadSchema = z.object({
 })
 
 function normalizeOptionalString(value?: string | null) {
-  if (!value) return null
-  const trimmed = value.trim()
-  return trimmed.length ? trimmed : null
+  if (value === undefined || value === null) return null
+  return value.trim()
 }
 
 function normalizeSections(

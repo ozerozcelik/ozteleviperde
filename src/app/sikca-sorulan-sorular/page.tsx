@@ -69,8 +69,8 @@ function mergeSection(
 }
 
 function normalizeText(value: string | null | undefined, fallback: string) {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : fallback
+  if (value === null || value === undefined) return fallback
+  return value.trim()
 }
 
 function parseFaqEditorItem(item: string | undefined) {
@@ -79,6 +79,9 @@ function parseFaqEditorItem(item: string | undefined) {
       question: '',
       answer: '',
       category: 'genel',
+      hasQuestion: false,
+      hasAnswer: false,
+      hasCategory: false,
     }
   }
 
@@ -94,6 +97,9 @@ function parseFaqEditorItem(item: string | undefined) {
         question: typeof parsed.question === 'string' ? parsed.question : '',
         answer: typeof parsed.answer === 'string' ? parsed.answer : '',
         category: typeof parsed.category === 'string' ? parsed.category : 'genel',
+        hasQuestion: Object.prototype.hasOwnProperty.call(parsed, 'question'),
+        hasAnswer: Object.prototype.hasOwnProperty.call(parsed, 'answer'),
+        hasCategory: Object.prototype.hasOwnProperty.call(parsed, 'category'),
       }
     }
   } catch {
@@ -106,6 +112,9 @@ function parseFaqEditorItem(item: string | undefined) {
     question: question || '',
     answer: answer || '',
     category: category || 'genel',
+    hasQuestion: Boolean(question),
+    hasAnswer: Boolean(answer),
+    hasCategory: Boolean(category),
   }
 }
 
@@ -118,9 +127,9 @@ function parseManagedFaqFallbacks(items: string[] | undefined, fallbackFaqs: FAQ
     .map((item, index) => {
       const fallback = fallbackFaqs[index]
       const parsed = parseFaqEditorItem(item)
-      const question = parsed.question || fallback?.question || ''
-      const answer = parsed.answer || fallback?.answer || ''
-      const category = parsed.category || fallback?.category || 'genel'
+      const question = parsed.hasQuestion ? parsed.question : (fallback?.question || '')
+      const answer = parsed.hasAnswer ? parsed.answer : (fallback?.answer || '')
+      const category = parsed.hasCategory ? parsed.category : (fallback?.category || 'genel')
 
       if (!question || !answer) return null
 

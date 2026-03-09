@@ -102,14 +102,14 @@ export type HomePageContent = {
 }
 
 function normalizeText(value: string | null | undefined, fallback: string) {
-  if (!value) return fallback
-  const trimmed = value.trim()
-  return trimmed.length ? trimmed : fallback
+  if (value === null || value === undefined) return fallback
+  return value.trim()
 }
 
 function normalizeLegacyVisualizerCopy(value: string | null | undefined, fallback: string) {
-  const trimmed = value?.trim()
-  if (!trimmed) return fallback
+  if (value === null || value === undefined) return fallback
+  const trimmed = value.trim()
+  if (!trimmed) return ''
 
   const legacyValues = new Set([
     'Visualizer',

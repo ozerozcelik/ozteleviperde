@@ -68,14 +68,13 @@ function mergeSection(
 }
 
 function normalizeText(value: string | null | undefined, fallback: string) {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : fallback
+  if (value === null || value === undefined) return fallback
+  return value.trim()
 }
 
 function normalizeTeamDescription(value: string | null | undefined, fallback: string) {
-  const trimmed = value?.trim()
-
-  if (!trimmed) return fallback
+  if (value === null || value === undefined) return fallback
+  const trimmed = value.trim()
   if (trimmed.toLowerCase().includes('her satir su formatta olmali')) return fallback
 
   return trimmed
@@ -325,6 +324,14 @@ export default function AboutPage() {
       bio: 'Her müşterinin hikayesini anlayan, kişisel çözümler sunuyor.',
     },
   ])
+  const teamGridClassName =
+    team.length <= 1
+      ? 'max-w-sm mx-auto grid-cols-1'
+      : team.length === 2
+        ? 'max-w-3xl mx-auto sm:grid-cols-2 lg:grid-cols-2'
+        : team.length === 3
+          ? 'max-w-5xl mx-auto sm:grid-cols-2 lg:grid-cols-3'
+          : 'sm:grid-cols-2 lg:grid-cols-4'
 
   const founderQuote = parseQuoteCard(quoteSection, {
     text:
@@ -628,7 +635,7 @@ export default function AboutPage() {
               </p>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className={`grid gap-8 ${teamGridClassName}`}>
               {team.map((member) => (
                 <div
                   key={member.name}
