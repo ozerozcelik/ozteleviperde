@@ -40,6 +40,7 @@ interface ProductFormDialogProps {
   form: ProductFormState
   newFeature: string
   fields: ProductFieldConfig[]
+  categorySuggestions: string[]
   mediaLibrary: MediaAsset[]
   isMediaLoading: boolean
   onRefreshMedia: () => void
@@ -68,6 +69,7 @@ export default function ProductFormDialog({
   form,
   newFeature,
   fields,
+  categorySuggestions,
   mediaLibrary,
   isMediaLoading,
   onRefreshMedia,
@@ -171,6 +173,7 @@ export default function ProductFormDialog({
                   </Label>
                   <Input
                     type={field.type}
+                    list={field.key === 'category' ? 'product-category-suggestions' : undefined}
                     value={String(form[field.key] ?? '')}
                     onChange={(e) => {
                       onFieldChange(field.key, e.target.value)
@@ -181,6 +184,13 @@ export default function ProductFormDialog({
                     required={field.required}
                     placeholder={field.placeholder}
                   />
+                  {field.key === 'category' && categorySuggestions.length > 0 && (
+                    <datalist id="product-category-suggestions">
+                      {categorySuggestions.map((category) => (
+                        <option key={category} value={category} />
+                      ))}
+                    </datalist>
+                  )}
                 </div>
               )
             })}

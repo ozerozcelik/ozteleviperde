@@ -507,13 +507,9 @@ const PRODUCT_FORM_FIELDS: ProductFieldConfig[] = [
   {
     key: 'category',
     label: 'Kategori',
-    type: 'select',
-    options: [
-      { value: 'perdeler', label: 'Perdeler' },
-      { value: 'tekstiller', label: 'Tekstiller' },
-      { value: 'yatak-odasi', label: 'Yatak Odası' },
-      { value: 'aksesuarlar', label: 'Aksesuarlar' },
-    ],
+    type: 'text',
+    required: true,
+    placeholder: 'Mevcut bir kategori seçin veya yeni kategori yazın',
   },
   {
     key: 'currency',
@@ -1536,6 +1532,14 @@ export default function AdminPage() {
     }
     return <Badge variant="outline">{categoryMap[category] || category}</Badge>
   }
+
+  const categorySuggestions = Array.from(
+    new Set(
+      ['perdeler', 'tekstiller', 'yatak-odasi', 'aksesuarlar', ...products.map((product) => product.category)]
+        .map((category) => category.trim())
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b, 'tr'))
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount)
@@ -3614,6 +3618,7 @@ export default function AdminPage() {
         form={productForm}
         newFeature={newFeature}
         fields={PRODUCT_FORM_FIELDS}
+        categorySuggestions={categorySuggestions}
         mediaLibrary={mediaLibrary}
         isMediaLoading={isMediaLoading}
         onRefreshMedia={() => void fetchMediaLibrary()}
