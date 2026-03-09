@@ -45,14 +45,14 @@ export default function WhatsAppButton({
         rel="noopener noreferrer"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="flex items-center justify-center w-14 h-14 bg-[#25D366] rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:ring-offset-2"
+        className="relative z-10 flex items-center justify-center w-14 h-14 bg-[#25D366] rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:ring-offset-2"
         aria-label="WhatsApp ile iletişime geçin"
       >
         <WhatsAppIcon className="w-7 h-7 text-white" />
       </a>
 
       {/* Pulse animation */}
-      <div className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-25" />
+      <div className="pointer-events-none absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-25" />
     </div>
   )
 }
