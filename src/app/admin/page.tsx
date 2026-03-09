@@ -42,7 +42,6 @@ import {
   Pencil,
   Trash2,
   Eye,
-  HelpCircle,
   TrendingUp,
   TrendingDown,
   DollarSign,
@@ -229,12 +228,14 @@ function formatFeatureItem(title: string, description: string) {
 function parseFaqEditorItem(
   item: string | undefined,
   fallbackQuestion = '',
-  fallbackAnswer = ''
+  fallbackAnswer = '',
+  fallbackCategory = 'genel'
 ) {
   if (!item) {
     return {
       question: fallbackQuestion,
       answer: fallbackAnswer,
+      category: fallbackCategory,
     }
   }
 
@@ -242,30 +243,34 @@ function parseFaqEditorItem(
     const parsed = JSON.parse(item) as {
       question?: string
       answer?: string
+      category?: string
     }
 
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       return {
         question: typeof parsed.question === 'string' ? parsed.question : fallbackQuestion,
         answer: typeof parsed.answer === 'string' ? parsed.answer : fallbackAnswer,
+        category: typeof parsed.category === 'string' ? parsed.category : fallbackCategory,
       }
     }
   } catch {
     // Legacy pipe-delimited values are still supported.
   }
 
-  const [question, ...rest] = item.split('|').map((part) => part.trim())
+  const [question, answer, category] = item.split('|').map((part) => part.trim())
 
   return {
     question: question || fallbackQuestion,
-    answer: rest.join(' | ') || fallbackAnswer,
+    answer: answer || fallbackAnswer,
+    category: category || fallbackCategory,
   }
 }
 
-function formatFaqEditorItem(question: string, answer: string) {
+function formatFaqEditorItem(question: string, answer: string, category: string) {
   return JSON.stringify({
     question,
     answer,
+    category,
   })
 }
 
@@ -466,17 +471,6 @@ interface QuoteRequest {
   createdAt: string
 }
 
-interface FAQ {
-  id: string
-  question: string
-  answer: string
-  category: string
-  order: number
-  active: boolean
-  createdAt: string
-  updatedAt: string
-}
-
 interface Order {
   id: string
   orderNumber: string
@@ -544,7 +538,6 @@ export default function AdminPage() {
   const [newsletters, setNewsletters] = useState<Newsletter[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [quotes, setQuotes] = useState<QuoteRequest[]>([])
-  const [faqs, setFaqs] = useState<FAQ[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [pages, setPages] = useState<ContentPage[]>([])
   const [pagesError, setPagesError] = useState('')
@@ -584,19 +577,6 @@ export default function AdminPage() {
   const [newFeature, setNewFeature] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
-
-  // FAQ form states
-  const [faqDialogOpen, setFaqDialogOpen] = useState(false)
-  const [editingFaq, setEditingFaq] = useState<FAQ | null>(null)
-  const [faqForm, setFaqForm] = useState({
-    question: '',
-    answer: '',
-    category: 'genel',
-    order: 0,
-    active: true,
-  })
-  const [faqDeleteDialogOpen, setFaqDeleteDialogOpen] = useState(false)
-  const [faqToDelete, setFaqToDelete] = useState<FAQ | null>(null)
 
   // Upload states
   const [isUploading, setIsUploading] = useState(false)
@@ -673,16 +653,6 @@ export default function AdminPage() {
       if (data.success) setQuotes(data.data)
     } catch (error) {
       console.error('Error fetching quotes:', error)
-    }
-  }, [])
-
-  const fetchFAQs = useCallback(async () => {
-    try {
-      const res = await fetch('/api/faq?active=all')
-      const data = await res.json()
-      if (data.success) setFaqs(data.data)
-    } catch (error) {
-      console.error('Error fetching FAQs:', error)
     }
   }, [])
 
@@ -880,12 +850,11 @@ export default function AdminPage() {
       fetchNewsletters(),
       fetchProducts(),
       fetchQuotes(),
-      fetchFAQs(),
       fetchOrders(),
       fetchPages(),
     ])
     setIsLoading(false)
-  }, [fetchDashboardStats, fetchContacts, fetchNewsletters, fetchProducts, fetchQuotes, fetchFAQs, fetchOrders, fetchPages])
+  }, [fetchDashboardStats, fetchContacts, fetchNewsletters, fetchProducts, fetchQuotes, fetchOrders, fetchPages])
 
   useEffect(() => {
     if (isAuthenticated && !hasFetchedRef.current) {
@@ -1188,85 +1157,6 @@ export default function AdminPage() {
     })
     setNewFeature('')
     setEditingProduct(null)
-  }
-
-  // FAQ CRUD operations
-  const handleCreateFaq = async () => {
-    try {
-      const res = await fetch('/api/faq', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(faqForm),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setFaqDialogOpen(false)
-        resetFaqForm()
-        fetchFAQs()
-      } else {
-        alert(data.error || 'SSS eklenirken bir hata oluştu.')
-      }
-    } catch (error) {
-      console.error('Error creating FAQ:', error)
-      alert('SSS eklenirken bir hata oluştu.')
-    }
-  }
-
-  const handleUpdateFaq = async () => {
-    if (!editingFaq) return
-    try {
-      const res = await fetch('/api/faq', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingFaq.id, ...faqForm }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setFaqDialogOpen(false)
-        resetFaqForm()
-        fetchFAQs()
-      } else {
-        alert(data.error || 'SSS güncellenirken bir hata oluştu.')
-      }
-    } catch (error) {
-      console.error('Error updating FAQ:', error)
-      alert('SSS güncellenirken bir hata oluştu.')
-    }
-  }
-
-  const handleDeleteFaq = async () => {
-    if (!faqToDelete) return
-    try {
-      const res = await fetch(`/api/faq?id=${faqToDelete.id}`, { method: 'DELETE' })
-      const data = await res.json()
-      if (data.success) {
-        setFaqDeleteDialogOpen(false)
-        setFaqToDelete(null)
-        fetchFAQs()
-      } else {
-        alert(data.error || 'SSS silinirken bir hata oluştu.')
-      }
-    } catch (error) {
-      console.error('Error deleting FAQ:', error)
-      alert('SSS silinirken bir hata oluştu.')
-    }
-  }
-
-  const openEditFaq = (faq: FAQ) => {
-    setEditingFaq(faq)
-    setFaqForm({
-      question: faq.question,
-      answer: faq.answer,
-      category: faq.category,
-      order: faq.order,
-      active: faq.active,
-    })
-    setFaqDialogOpen(true)
-  }
-
-  const resetFaqForm = () => {
-    setFaqForm({ question: '', answer: '', category: 'genel', order: 0, active: true })
-    setEditingFaq(null)
   }
 
   const addFeature = () => {
@@ -1577,13 +1467,6 @@ export default function AdminPage() {
             }`}>
             <Users className="w-4 h-4" />
             Bülten
-          </button>
-          <button onClick={() => setActiveTab('faqs')}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
-              activeTab === 'faqs' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
-            }`}>
-            <HelpCircle className="w-4 h-4" />
-            SSS
           </button>
           <button onClick={() => setActiveTab('pages')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
@@ -2150,65 +2033,6 @@ export default function AdminPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>{formatDate(newsletter.createdAt)}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* FAQs Tab */}
-        {activeTab === 'faqs' && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Sıkça Sorulan Sorular</h2>
-                <Button onClick={() => { resetFaqForm(); setFaqDialogOpen(true); }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Yeni SSS
-                </Button>
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Sıra</TableHead>
-                    <TableHead>Soru</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead className="text-right">İşlemler</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {faqs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-stone-500 py-8">
-                        Henüz SSS bulunmuyor.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    faqs.map((faq) => (
-                      <TableRow key={faq.id}>
-                        <TableCell>{faq.order}</TableCell>
-                        <TableCell className="font-medium max-w-xs truncate">{faq.question}</TableCell>
-                        <TableCell>{getCategoryBadge(faq.category)}</TableCell>
-                        <TableCell>
-                          <Badge variant={faq.active ? 'default' : 'secondary'}>
-                            {faq.active ? 'Aktif' : 'Pasif'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => openEditFaq(faq)}>
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700"
-                              onClick={() => { setFaqToDelete(faq); setFaqDeleteDialogOpen(true); }}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -3170,7 +2994,12 @@ export default function AdminPage() {
                                       <div className="space-y-4">
                                         {faqItems.map((item: string, i: number) => {
                                           const fallbackEntry = parseFaqEditorItem(baselineFaqItems[i])
-                                          const entry = parseFaqEditorItem(item, fallbackEntry.question, fallbackEntry.answer)
+                                          const entry = parseFaqEditorItem(
+                                            item,
+                                            fallbackEntry.question,
+                                            fallbackEntry.answer,
+                                            fallbackEntry.category
+                                          )
 
                                           return (
                                             <div key={i} className="rounded-xl border border-stone-200 p-4 space-y-3">
@@ -3198,14 +3027,53 @@ export default function AdminPage() {
                                                     const currentEntry = parseFaqEditorItem(
                                                       faqItems[i],
                                                       fallbackEntry.question,
-                                                      fallbackEntry.answer
+                                                      fallbackEntry.answer,
+                                                      fallbackEntry.category
                                                     )
                                                     const nextItems = [...faqItems]
-                                                    nextItems[i] = formatFaqEditorItem(e.target.value, currentEntry.answer)
+                                                    nextItems[i] = formatFaqEditorItem(
+                                                      e.target.value,
+                                                      currentEntry.answer,
+                                                      currentEntry.category
+                                                    )
                                                     newSections[index].items = nextItems
                                                     setSectionsWithHistory(newSections)
                                                   }}
                                                 />
+                                              </div>
+                                              <div className="space-y-2">
+                                                <Label>Kategori</Label>
+                                                <Select
+                                                  value={entry.category}
+                                                  onValueChange={(value) => {
+                                                    const newSections = [...pageSections]
+                                                    const currentEntry = parseFaqEditorItem(
+                                                      faqItems[i],
+                                                      fallbackEntry.question,
+                                                      fallbackEntry.answer,
+                                                      fallbackEntry.category
+                                                    )
+                                                    const nextItems = [...faqItems]
+                                                    nextItems[i] = formatFaqEditorItem(
+                                                      currentEntry.question,
+                                                      currentEntry.answer,
+                                                      value
+                                                    )
+                                                    newSections[index].items = nextItems
+                                                    setSectionsWithHistory(newSections)
+                                                  }}
+                                                >
+                                                  <SelectTrigger>
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="genel">Genel</SelectItem>
+                                                    <SelectItem value="urunler">Ürünler</SelectItem>
+                                                    <SelectItem value="siparis">Sipariş</SelectItem>
+                                                    <SelectItem value="teslimat">Teslimat</SelectItem>
+                                                    <SelectItem value="iade">İade</SelectItem>
+                                                  </SelectContent>
+                                                </Select>
                                               </div>
                                               <div className="space-y-2">
                                                 <Label>Cevap</Label>
@@ -3218,10 +3086,15 @@ export default function AdminPage() {
                                                     const currentEntry = parseFaqEditorItem(
                                                       faqItems[i],
                                                       fallbackEntry.question,
-                                                      fallbackEntry.answer
+                                                      fallbackEntry.answer,
+                                                      fallbackEntry.category
                                                     )
                                                     const nextItems = [...faqItems]
-                                                    nextItems[i] = formatFaqEditorItem(currentEntry.question, e.target.value)
+                                                    nextItems[i] = formatFaqEditorItem(
+                                                      currentEntry.question,
+                                                      e.target.value,
+                                                      currentEntry.category
+                                                    )
                                                     newSections[index].items = nextItems
                                                     setSectionsWithHistory(newSections)
                                                   }}
@@ -3235,7 +3108,7 @@ export default function AdminPage() {
                                           size="sm"
                                           onClick={() => {
                                             const newSections = [...pageSections]
-                                            newSections[index].items = [...faqItems, formatFaqEditorItem('', '')]
+                                            newSections[index].items = [...faqItems, formatFaqEditorItem('', '', 'genel')]
                                             setSectionsWithHistory(newSections)
                                           }}
                                         >
@@ -3448,86 +3321,6 @@ export default function AdminPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>İptal</Button>
             <Button variant="destructive" onClick={handleDeleteProduct}>Sil</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* FAQ Dialog */}
-      <Dialog open={faqDialogOpen} onOpenChange={setFaqDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingFaq ? 'SSS Düzenle' : 'Yeni SSS Ekle'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Soru *</Label>
-              <Input
-                value={faqForm.question}
-                onChange={(e) => setFaqForm((prev) => ({ ...prev, question: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Cevap *</Label>
-              <Textarea
-                value={faqForm.answer}
-                onChange={(e) => setFaqForm((prev) => ({ ...prev, answer: e.target.value }))}
-                rows={4}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Kategori</Label>
-                <Select value={faqForm.category} onValueChange={(value) => setFaqForm((prev) => ({ ...prev, category: value }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="genel">Genel</SelectItem>
-                    <SelectItem value="urunler">Ürünler</SelectItem>
-                    <SelectItem value="siparis">Sipariş</SelectItem>
-                    <SelectItem value="teslimat">Teslimat</SelectItem>
-                    <SelectItem value="iade">İade</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Sıra</Label>
-                <Input
-                  type="number"
-                  value={faqForm.order}
-                  onChange={(e) => setFaqForm((prev) => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={faqForm.active}
-                onChange={(e) => setFaqForm((prev) => ({ ...prev, active: e.target.checked }))}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Aktif</span>
-            </label>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFaqDialogOpen(false)}>İptal</Button>
-            <Button onClick={editingFaq ? handleUpdateFaq : handleCreateFaq}>
-              {editingFaq ? 'Güncelle' : 'Ekle'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete FAQ Dialog */}
-      <Dialog open={faqDeleteDialogOpen} onOpenChange={setFaqDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>SSS Sil</DialogTitle>
-            <DialogDescription>
-              Bu SSS&apos;yi silmek istediğinizden emin misiniz?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFaqDeleteDialogOpen(false)}>İptal</Button>
-            <Button variant="destructive" onClick={handleDeleteFaq}>Sil</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

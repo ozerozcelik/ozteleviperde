@@ -78,6 +78,7 @@ function parseFaqEditorItem(item: string | undefined) {
     return {
       question: '',
       answer: '',
+      category: 'genel',
     }
   }
 
@@ -85,23 +86,26 @@ function parseFaqEditorItem(item: string | undefined) {
     const parsed = JSON.parse(item) as {
       question?: string
       answer?: string
+      category?: string
     }
 
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       return {
         question: typeof parsed.question === 'string' ? parsed.question : '',
         answer: typeof parsed.answer === 'string' ? parsed.answer : '',
+        category: typeof parsed.category === 'string' ? parsed.category : 'genel',
       }
     }
   } catch {
     // Legacy pipe-delimited values are still supported.
   }
 
-  const [question, ...rest] = item.split('|').map((part) => part.trim())
+  const [question, answer, category] = item.split('|').map((part) => part.trim())
 
   return {
     question: question || '',
-    answer: rest.join(' | '),
+    answer: answer || '',
+    category: category || 'genel',
   }
 }
 
@@ -116,6 +120,7 @@ function parseManagedFaqFallbacks(items: string[] | undefined, fallbackFaqs: FAQ
       const parsed = parseFaqEditorItem(item)
       const question = parsed.question || fallback?.question || ''
       const answer = parsed.answer || fallback?.answer || ''
+      const category = parsed.category || fallback?.category || 'genel'
 
       if (!question || !answer) return null
 
@@ -123,7 +128,7 @@ function parseManagedFaqFallbacks(items: string[] | undefined, fallbackFaqs: FAQ
         id: fallback?.id || `managed-${index + 1}`,
         question,
         answer,
-        category: fallback?.category || 'genel',
+        category,
         order: fallback?.order || index + 1,
         active: true,
         createdAt: fallback?.createdAt || new Date().toISOString(),
@@ -266,16 +271,11 @@ export default function FAQPage() {
     baseline?.sections.find((section) => section.key === 'faq-cta'),
     pageSections
   )
-  const managedFallbackFaqs = useMemo(
-    () => parseManagedFaqFallbacks(faqSampleSection?.items, fallbackFAQs),
-    [faqSampleSection?.items, fallbackFAQs]
-  )
+  const managedFallbackFaqs = parseManagedFaqFallbacks(faqSampleSection?.items, fallbackFAQs)
 
   const [activeSection, setActiveSection] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [faqs, setFaqs] = useState<FAQ[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState('tumu')
   const observerRef = useRef<IntersectionObserver | null>(null)
 
@@ -308,30 +308,10 @@ export default function FAQPage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  useEffect(() => {
-    const fetchFAQs = async () => {
-      try {
-        const res = await fetch('/api/faq?active=true')
-        const data = await res.json()
-        if (data.success && data.data && data.data.length > 0) {
-          setFaqs(data.data)
-        } else {
-          setFaqs(managedFallbackFaqs)
-        }
-      } catch (error) {
-        console.error('Error fetching FAQs:', error)
-        setFaqs(managedFallbackFaqs)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchFAQs()
-  }, [managedFallbackFaqs])
-
   const filteredFAQs =
     activeCategory === 'tumu'
-      ? faqs
-      : faqs.filter((faq) => faq.category === activeCategory)
+      ? managedFallbackFaqs
+      : managedFallbackFaqs.filter((faq) => faq.category === activeCategory)
 
   const navLinks = [
     { href: '/hakkimizda', label: 'Hakkımızda' },
@@ -510,15 +490,8 @@ export default function FAQPage() {
               ))}
             </div>
 
-            {/* Loading State */}
-            {isLoading && (
-              <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
-              </div>
-            )}
-
             {/* FAQ Accordion */}
-            {!isLoading && filteredFAQs.length > 0 && (
+            {filteredFAQs.length > 0 && (
               <Accordion type="single" collapsible className="space-y-4">
                 {filteredFAQs.map((faq, index) => (
                   <AccordionItem
@@ -545,7 +518,7 @@ export default function FAQPage() {
             )}
 
             {/* Empty State */}
-            {!isLoading && filteredFAQs.length === 0 && (
+            {filteredFAQs.length === 0 && (
               <div className="text-center py-16">
                 <p className="text-muted-foreground">
                   Bu kategoride henüz soru bulunmuyor.

@@ -455,10 +455,10 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         title: 'Örnek Sorular',
         content: 'Fallback veri içinde görünen soru-cevap çiftleri.',
         items: [
-          '{"question":"Ürünleriniz hangi malzemelerden üretilmektedir?","answer":"Tüm ürünlerimiz %100 doğal malzemelerden üretilmektedir. Keten, organik pamuk, bambu ve sürdürülebilir lifler koleksiyonumuzun temelini oluşturur. Her malzeme etik kaynaklıdır ve çevre dostu üretim süreçleri kullanılır."}',
-          '{"question":"Perde ölçüsü nasıl alınır?","answer":"Perde ölçüsü alırken, pencere genişliğine 20-30 cm eklemenizi öneririz. Yükseklik için tavan veya tavan süsünden zemine kadar ölçüm yapın. Ücretsiz ölçü hizmetimiz için bizimle iletişime geçebilirsiniz."}',
-          '{"question":"Siparişimi nasıl verebilirim?","answer":"Web sitemiz üzerinden, telefonla veya showroomlarımızda sipariş verebilirsiniz. Özel ölçü ve tasarım talepleriniz için uzman ekibimizle görüşmenizi öneririz."}',
-          '{"question":"Teslimat süresi ne kadardır?","answer":"Standart ürünler için 3-5 iş günü, özel ölçü perdeler için 2-4 hafta teslimat süresi bulunmaktadır. İstanbul içi ücretsiz montaj hizmeti sunuyoruz."}',
+          '{"question":"Ürünleriniz hangi malzemelerden üretilmektedir?","answer":"Tüm ürünlerimiz %100 doğal malzemelerden üretilmektedir. Keten, organik pamuk, bambu ve sürdürülebilir lifler koleksiyonumuzun temelini oluşturur. Her malzeme etik kaynaklıdır ve çevre dostu üretim süreçleri kullanılır.","category":"urunler"}',
+          '{"question":"Perde ölçüsü nasıl alınır?","answer":"Perde ölçüsü alırken, pencere genişliğine 20-30 cm eklemenizi öneririz. Yükseklik için tavan veya tavan süsünden zemine kadar ölçüm yapın. Ücretsiz ölçü hizmetimiz için bizimle iletişime geçebilirsiniz.","category":"urunler"}',
+          '{"question":"Siparişimi nasıl verebilirim?","answer":"Web sitemiz üzerinden, telefonla veya showroomlarımızda sipariş verebilirsiniz. Özel ölçü ve tasarım talepleriniz için uzman ekibimizle görüşmenizi öneririz.","category":"siparis"}',
+          '{"question":"Teslimat süresi ne kadardır?","answer":"Standart ürünler için 3-5 iş günü, özel ölçü perdeler için 2-4 hafta teslimat süresi bulunmaktadır. İstanbul içi ücretsiz montaj hizmeti sunuyoruz.","category":"teslimat"}',
         ],
       },
       {
