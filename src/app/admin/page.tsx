@@ -2448,19 +2448,32 @@ export default function AdminPage() {
                           <div
                             key={index}
                             className="border rounded-lg p-4 bg-stone-50"
-                            draggable
-                            onDragStart={() => setDraggingSectionIndex(index)}
                             onDragOver={(event) => event.preventDefault()}
-                            onDrop={() => {
+                            onDrop={(event) => {
+                              event.preventDefault()
                               if (draggingSectionIndex === null) return
                               moveSection(draggingSectionIndex, index)
                               setDraggingSectionIndex(null)
                             }}
                           >
                             <div className="flex items-center justify-between mb-3">
-                              <span className="font-medium capitalize">{section.type} Bölümü</span>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  draggable
+                                  onDragStart={() => setDraggingSectionIndex(index)}
+                                  onDragEnd={() => setDraggingSectionIndex(null)}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-stone-200 bg-white text-stone-500 cursor-grab active:cursor-grabbing"
+                                  aria-label="Bölümü sürükle"
+                                  title="Bölümü sürükle"
+                                >
+                                  ↕
+                                </button>
+                                <span className="font-medium capitalize">{section.type} Bölümü</span>
+                              </div>
                               <div className="flex items-center gap-2">
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
                                   disabled={index === 0}
@@ -2469,6 +2482,7 @@ export default function AdminPage() {
                                   ↑
                                 </Button>
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
                                   disabled={index === pageSections.length - 1}
@@ -2477,6 +2491,7 @@ export default function AdminPage() {
                                   ↓
                                 </Button>
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
