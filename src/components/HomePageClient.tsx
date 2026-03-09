@@ -186,7 +186,7 @@ function Navigation({ activeSection, onSearchClick }: { activeSection: string; o
             {/* Cart */}
             <CartIcon />
             
-            {/* 3D Visualizer */}
+            {/* Selection Assistant */}
             <Link
               href="/visualizer"
               className="px-4 py-2 text-sm tracking-wide text-foreground border border-foreground/30 rounded-full transition-all duration-500 hover:border-foreground/50 hover:bg-foreground/5 flex items-center gap-2"
@@ -195,7 +195,7 @@ function Navigation({ activeSection, onSearchClick }: { activeSection: string; o
                 <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
                 <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
               </svg>
-              3D
+              Asistan
             </Link>
 
             <Link
@@ -364,7 +364,7 @@ function Navigation({ activeSection, onSearchClick }: { activeSection: string; o
                 <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
                 <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
               </svg>
-              3D Görselleştirici
+              Perde Seçim Asistanı
             </Link>
             <a
               href="#iletisim"
@@ -381,7 +381,7 @@ function Navigation({ activeSection, onSearchClick }: { activeSection: string; o
 }
 
 // ============================================
-// Visualizer Banner
+// Selection Assistant Banner
 // ============================================
 function VisualizerBanner({ content }: { content: HomePageContent['visualizer'] }) {
   return (
@@ -399,8 +399,8 @@ function VisualizerBanner({ content }: { content: HomePageContent['visualizer'] 
           <div className="flex-1 text-center md:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-foreground/10 rounded-full text-sm text-foreground mb-4">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
-                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-                <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
+                <path d="M9 12l2 2 4-4" />
+                <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
               </svg>
               {content.badge}
             </div>
@@ -415,8 +415,8 @@ function VisualizerBanner({ content }: { content: HomePageContent['visualizer'] 
               className="inline-flex items-center gap-2 px-6 py-3 bg-foreground text-background text-sm tracking-wide rounded-full transition-all duration-500 hover:bg-foreground/90 hover:shadow-lg"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5">
-                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                <path d="M9 12l2 2 4-4" />
+                <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
               </svg>
               {content.ctaText}
             </Link>

@@ -2,11 +2,11 @@ import type { Metadata } from 'next'
 import { toAbsoluteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: '3D Görselleştirici',
-  description: 'Oda görselleştirici ile perdelerinizi mekanınızda önizleyin. Farklı oda türleri, perde stilleri ve renk kombinasyonlarını keşfedin. Satın alma kararınızı kolaylaştırın.',
+  title: 'Perde Seçim Asistanı',
+  description: 'Oda tipi, ışık ihtiyacı ve mahremiyet tercihlerinize göre size uygun perde yönünü belirleyen akıllı seçim asistanı.',
   openGraph: {
-    title: '3D Görselleştirici | ÖzTelevi',
-    description: 'Perdelerinizi mekanınızda önizleyin. Farklı kombinasyonları keşfedin.',
+    title: 'Perde Seçim Asistanı | ÖzTelevi',
+    description: 'Kısa bir yönlendirme akışı ile mekanınıza uygun perde yaklaşımını bulun.',
     images: ['/images/og-image.png'],
   },
   alternates: {

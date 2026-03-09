@@ -107,6 +107,21 @@ function normalizeText(value: string | null | undefined, fallback: string) {
   return trimmed.length ? trimmed : fallback
 }
 
+function normalizeLegacyVisualizerCopy(value: string | null | undefined, fallback: string) {
+  const trimmed = value?.trim()
+  if (!trimmed) return fallback
+
+  const legacyValues = new Set([
+    'Visualizer',
+    '3D Görselleştirici',
+    'Perdelerinizi Görselleştirin',
+    'Oda görselleştiricimiz ile farklı perde stillerini ve renklerini mekanınızda önizleyin. Karar vermeyi kolaylaştırın.',
+    'Hemen Deneyin',
+  ])
+
+  return legacyValues.has(trimmed) ? fallback : trimmed
+}
+
 function normalizeLink(
   value: string | null | undefined,
   fallback: string
@@ -310,10 +325,10 @@ export async function getHomePageContent(): Promise<HomePageContent> {
       secondaryCtaLink: '#felsefe',
     },
     visualizer: {
-      badge: 'Yeni Özellik',
-      title: normalizeText(visualizerSection.title, baselineSections[0].title || ''),
-      description: normalizeText(visualizerSection.content, baselineSections[0].content || ''),
-      ctaText: normalizeText(visualizerSection.linkText, baselineSections[0].linkText || 'Hemen Deneyin'),
+      badge: 'Akıllı Yardım',
+      title: normalizeLegacyVisualizerCopy(visualizerSection.title, baselineSections[0].title || ''),
+      description: normalizeLegacyVisualizerCopy(visualizerSection.content, baselineSections[0].content || ''),
+      ctaText: normalizeLegacyVisualizerCopy(visualizerSection.linkText, baselineSections[0].linkText || 'Asistanı Aç'),
       ctaLink: normalizeLink(visualizerSection.link, baselineSections[0].link || '/visualizer'),
     },
     philosophy: {
