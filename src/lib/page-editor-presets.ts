@@ -220,6 +220,18 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
           'Basın | /blog',
         ],
       },
+      {
+        key: 'footer-support-links',
+        type: 'features',
+        title: 'Footer Destek Linkleri',
+        content: 'Her satir su formatta olmali: Etiket | Link',
+        items: [
+          'İletişim | /#iletisim',
+          'SSS | /sikca-sorulan-sorular',
+          'Kargo | /sikca-sorulan-sorular',
+          'İadeler | /sikca-sorulan-sorular',
+        ],
+      },
     ],
   }),
   galeri: createPreset({

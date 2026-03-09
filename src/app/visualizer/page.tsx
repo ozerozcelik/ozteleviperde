@@ -7,6 +7,7 @@ import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import ManagedPage from '@/components/ManagedPage'
 import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
 // ============================================
 // Types
@@ -101,6 +102,7 @@ const curtainColors: CurtainColor[] = [
 // ============================================
 export default function VisualizerPage() {
   const { content: managedPage, loading } = usePageContent('visualizer')
+  const { contact } = useSiteSettings()
 
   const [selectedRoom, setSelectedRoom] = useState<Room>(rooms[0])
   const [selectedStyle, setSelectedStyle] = useState<CurtainStyle>(curtainStyles[0])
@@ -603,13 +605,13 @@ export default function VisualizerPage() {
                 Teklif Al
               </a>
               <a
-                href="tel:+902125550123"
+                href={contact.phoneHref}
                 className="px-8 py-4 border border-background/30 text-background text-sm tracking-wide rounded-full transition-all duration-500 hover:border-background/50 flex items-center justify-center gap-2"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                   <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
-                Hemen Arayın
+                {contact.phoneDisplay}
               </a>
             </div>
           </div>

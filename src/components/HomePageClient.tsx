@@ -1442,13 +1442,13 @@ function Footer({ content }: { content: HomePageContent['footer'] }) {
               Destek
             </h4>
             <ul className="space-y-3">
-              {['İletişim', 'SSS', 'Kargo', 'İadeler'].map((item) => (
-                <li key={item}>
+              {content.supportLinks.map((item) => (
+                <li key={item.label}>
                   <a
-                    href="#iletisim"
+                    href={item.href}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
                   >
-                    {item}
+                    {item.label}
                   </a>
                 </li>
               ))}

@@ -15,6 +15,8 @@ import ManagedPage from '@/components/ManagedPage'
 import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
+import { sanitizeUrl } from '@/lib/content-sanitizer'
+import { getPageEditorPreset, type PageEditorSection } from '@/lib/page-editor-presets'
 
 // ============================================
 // Types
@@ -28,6 +30,47 @@ interface FAQ {
   active: boolean
   createdAt: string
   updatedAt: string
+}
+
+function parseSections(value: string | null | undefined): PageEditorSection[] {
+  if (!value) return []
+
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? (parsed as PageEditorSection[]) : []
+  } catch {
+    return []
+  }
+}
+
+function normalizeKey(value: string | undefined) {
+  return (value || '').trim().toLowerCase()
+}
+
+function findSection(sections: PageEditorSection[], key: string) {
+  return sections.find((section) => normalizeKey(section.key) === key)
+}
+
+function mergeSection(
+  key: string,
+  fallback: PageEditorSection | undefined,
+  sections: PageEditorSection[]
+) {
+  const match = findSection(sections, key)
+
+  if (!fallback) return match || null
+  if (!match) return fallback
+
+  return {
+    ...fallback,
+    ...match,
+    items: Array.isArray(match.items) && match.items.length > 0 ? match.items : fallback.items,
+  }
+}
+
+function normalizeText(value: string | null | undefined, fallback: string) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : fallback
 }
 
 function getFallbackFAQs({
@@ -140,11 +183,18 @@ const categoryLabels: Record<string, string> = {
 export default function FAQPage() {
   const { contact, structuredData } = useSiteSettings()
   const { content: managedPage, loading } = usePageContent('sikca-sorulan-sorular')
+  const baseline = getPageEditorPreset('sikca-sorulan-sorular')
   const fallbackFAQs = getFallbackFAQs({
     address: contact.address,
     weekdays: structuredData.openingHours.weekdays,
     saturday: structuredData.openingHours.saturday,
   })
+  const pageSections = parseSections(managedPage?.sections)
+  const faqCtaSection = mergeSection(
+    'faq-cta',
+    baseline?.sections.find((section) => section.key === 'faq-cta'),
+    pageSections
+  )
 
   const [activeSection, setActiveSection] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
@@ -214,12 +264,28 @@ export default function FAQPage() {
     { href: '/koleksiyonlar', label: 'Koleksiyonlar' },
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
   ]
+  const heroEyebrow = normalizeText(managedPage?.heroCtaText, 'Destek')
+  const heroTitle = normalizeText(managedPage?.heroTitle, 'Sıkça Sorulan Sorular')
+  const heroSubtitle = normalizeText(
+    managedPage?.heroSubtitle,
+    'Merak ettiğiniz soruların cevaplarını burada bulabilirsiniz. Başka sorularınız için bizimle iletişime geçmekten çekinmeyin.'
+  )
+  const faqCtaTitle = normalizeText(
+    faqCtaSection?.title,
+    'Sorunuzun cevabını bulamadınız mı?'
+  )
+  const faqCtaDescription = normalizeText(
+    faqCtaSection?.content,
+    'Ekibimiz sorularınızı yanıtlamaktan mutluluk duyar.'
+  )
+  const faqCtaLinkText = normalizeText(faqCtaSection?.linkText, 'Bize Ulaşın')
+  const faqCtaLink = sanitizeUrl(faqCtaSection?.link, { allowAnchor: true }) || '/#iletisim'
 
   if (loading && !managedPage) {
     return <ManagedPageLoading />
   }
 
-  if (managedPage?.htmlContent || managedPage?.heroTitle) {
+  if (managedPage?.htmlContent) {
     return <ManagedPage 
       html={managedPage.htmlContent} 
       schemaJson={managedPage.schemaJson}
@@ -338,14 +404,13 @@ export default function FAQPage() {
 
           <div className="max-w-4xl mx-auto px-6 text-center relative">
             <p className="text-sm tracking-[0.3em] uppercase text-muted-foreground mb-6 opacity-0 translate-y-8 animate-fade-in-up in-view:opacity-100 in-view:translate-y-0 in-view:duration-1000">
-              Destek
+              {heroEyebrow}
             </p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-foreground leading-tight mb-6 opacity-0 translate-y-8 animate-fade-in-up stagger-1 in-view:opacity-100 in-view:translate-y-0 in-view:duration-1000">
-              Sıkça Sorulan <span className="font-normal italic">Sorular</span>
+              {heroTitle}
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed opacity-0 translate-y-8 animate-fade-in-up stagger-2 in-view:opacity-100 in-view:translate-y-0 in-view:duration-1000">
-              Merak ettiğiniz soruların cevaplarını burada bulabilirsiniz.
-              Başka sorularınız için bizimle iletişime geçmekten çekinmeyin.
+              {heroSubtitle}
             </p>
           </div>
         </section>
@@ -419,17 +484,17 @@ export default function FAQPage() {
         <section className="py-16 md:py-24 bg-foreground">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h2 className="text-2xl md:text-3xl font-light text-background mb-4 opacity-0 translate-y-8 animate-fade-in-up in-view:opacity-100 in-view:translate-y-0 in-view:duration-1000">
-              Sorunuzun cevabını <span className="font-normal italic">bulamadınız mı?</span>
+              {faqCtaTitle}
             </h2>
             <p className="text-background/80 mb-8 opacity-0 translate-y-8 animate-fade-in-up stagger-1 in-view:opacity-100 in-view:translate-y-0 in-view:duration-1000">
-              Ekibimiz sorularınızı yanıtlamaktan mutluluk duyar.
+              {faqCtaDescription}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center opacity-0 translate-y-8 animate-fade-in-up stagger-2 in-view:opacity-100 in-view:translate-y-0 in-view:duration-1000">
               <a
-                href="/#iletisim"
+                href={faqCtaLink}
                 className="px-8 py-4 bg-background text-foreground text-sm tracking-wide rounded-full transition-all duration-500 hover:bg-background/90 hover:shadow-lg"
               >
-                Bize Ulaşın
+                {faqCtaLinkText}
               </a>
               <a
                 href={contact.phoneHref}

@@ -97,6 +97,7 @@ export type HomePageContent = {
   footer: {
     collectionLinks: LinkItem[]
     companyLinks: LinkItem[]
+    supportLinks: LinkItem[]
   }
 }
 
@@ -293,6 +294,7 @@ export async function getHomePageContent(): Promise<HomePageContent> {
   const contactSection = mergeSection(baselineSections[7], pageSections, 7)
   const footerCollectionSection = mergeSection(baselineSections[8], pageSections, 8)
   const footerCompanySection = mergeSection(baselineSections[9], pageSections, 9)
+  const footerSupportSection = mergeSection(baselineSections[10], pageSections, 10)
 
   return {
     seoTitle: normalizeText(publishedPage?.seoTitle, baseline.seoTitle),
@@ -439,6 +441,12 @@ export async function getHomePageContent(): Promise<HomePageContent> {
         { label: 'Ustalarımız', href: '/hakkimizda' },
         { label: 'Sürdürülebilirlik', href: '/hakkimizda' },
         { label: 'Basın', href: '/blog' },
+      ]),
+      supportLinks: parseFooterLinks(footerSupportSection.items, [
+        { label: 'İletişim', href: '/#iletisim' },
+        { label: 'SSS', href: '/sikca-sorulan-sorular' },
+        { label: 'Kargo', href: '/sikca-sorulan-sorular' },
+        { label: 'İadeler', href: '/sikca-sorulan-sorular' },
       ]),
     },
   }
