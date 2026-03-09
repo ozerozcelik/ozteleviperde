@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import ManagedPage from '@/components/ManagedPage'
 import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
-import { sanitizeUrl } from '@/lib/content-sanitizer'
 import { getPageEditorPreset, type PageEditorSection } from '@/lib/page-editor-presets'
 
 type AssistantOption = {
@@ -278,6 +277,18 @@ export default function VisualizerPage() {
   const [style, setStyle] = useState(styleOptions[0].id)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [quoteForm, setQuoteForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    width: '',
+    height: '',
+    quantity: '1',
+    notes: '',
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [submitMessage, setSubmitMessage] = useState('')
 
   useEffect(() => {
     const handleScroll = () => {
@@ -307,7 +318,7 @@ export default function VisualizerPage() {
     'Asistan size başlangıç yönü verir. Ölçü, kumaş ve katman kararını birlikte netleştirmek için ekibimizle iletişime geçin.'
   )
   const ctaButtonText = normalizeText(ctaSection?.linkText, 'Teklif Al')
-  const ctaButtonLink = sanitizeUrl(ctaSection?.link, { allowAnchor: true }) || '/#iletisim'
+  const ctaButtonLink = '#teklif-formu'
   const stepItems = (stepSection?.items || [
     '1. Oda Tipi - Mekanınızı seçin.',
     '2. Işık ve Mahremiyet - İhtiyacınızı belirleyin.',
@@ -318,6 +329,81 @@ export default function VisualizerPage() {
     () => getRecommendation({ room, light, privacy, style }),
     [room, light, privacy, style]
   )
+  const roomLabel = roomOptions.find((option) => option.id === room)?.label || room
+  const lightLabel = lightOptions.find((option) => option.id === light)?.label || light
+  const privacyLabel = privacyOptions.find((option) => option.id === privacy)?.label || privacy
+  const styleLabel = styleOptions.find((option) => option.id === style)?.label || style
+
+  const handleQuoteInputChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = event.target
+    setQuoteForm((current) => ({ ...current, [name]: value }))
+  }
+
+  const handleQuoteSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setIsSubmitting(true)
+    setSubmitStatus('idle')
+    setSubmitMessage('')
+
+    const summaryLines = [
+      `Asistan önerisi: ${recommendation.title}`,
+      `Mekan tipi: ${roomLabel}`,
+      `Işık ihtiyacı: ${lightLabel}`,
+      `Mahremiyet: ${privacyLabel}`,
+      `Stil yönü: ${styleLabel}`,
+      `Önerilen kumaş: ${recommendation.fabric}`,
+      `Önerilen kurgu: ${recommendation.lining}`,
+      `Renk yönü: ${recommendation.color}`,
+      `Ölçü: ${quoteForm.width} cm x ${quoteForm.height} cm`,
+      `Adet: ${quoteForm.quantity}`,
+    ]
+
+    if (quoteForm.notes.trim()) {
+      summaryLines.push(`Ek not: ${quoteForm.notes.trim()}`)
+    }
+
+    try {
+      const response = await fetch('/api/quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: quoteForm.name,
+          email: quoteForm.email,
+          phone: quoteForm.phone,
+          productType: 'Perde Seçim Asistanı',
+          message: summaryLines.join('\n'),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setSubmitStatus('success')
+        setSubmitMessage('Ölçüleriniz ve tercihlerinizi aldık. Size en kısa sürede dönüş yapacağız.')
+        setQuoteForm({
+          name: '',
+          email: '',
+          phone: '',
+          width: '',
+          height: '',
+          quantity: '1',
+          notes: '',
+        })
+      } else {
+        setSubmitStatus('error')
+        setSubmitMessage(data.error || 'Teklif talebi gönderilemedi. Lütfen tekrar deneyin.')
+      }
+    } catch {
+      setSubmitStatus('error')
+      setSubmitMessage('Teklif talebi gönderilemedi. Lütfen tekrar deneyin.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   if (loading && !managedPage) {
     return <ManagedPageLoading />
@@ -511,6 +597,183 @@ export default function VisualizerPage() {
                 <p className="text-sm tracking-[0.26em] uppercase text-muted-foreground mb-3">Sonraki Adım</p>
                 <h3 className="text-xl font-light text-foreground">{ctaTitle}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{ctaDescription}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="teklif-formu" className="pb-16 md:pb-24">
+          <div className="max-w-6xl mx-auto px-6 lg:px-8">
+            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="rounded-[28px] border border-border/60 bg-sand-50 p-6 md:p-8">
+                <p className="text-sm tracking-[0.26em] uppercase text-muted-foreground mb-3">Ölçü ile Teklif</p>
+                <h2 className="text-2xl md:text-3xl font-light text-foreground">Perdenizi ölçüyle netleştirelim</h2>
+                <p className="mt-4 text-muted-foreground leading-relaxed">
+                  Genişlik, yükseklik ve adet bilgilerini bırakın. Asistanın önerdiği perde yönüyle birlikte ekibimiz size uygun teklif hazırlasın.
+                </p>
+
+                <div className="mt-8 space-y-4">
+                  <div className="rounded-2xl border border-border/60 bg-background p-4">
+                    <p className="text-xs tracking-[0.22em] uppercase text-muted-foreground mb-2">Asistan Özeti</p>
+                    <p className="text-base font-medium text-foreground">{recommendation.title}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">{roomLabel} • {lightLabel} • {privacyLabel} • {styleLabel}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/60 bg-background p-4">
+                    <p className="text-xs tracking-[0.22em] uppercase text-muted-foreground mb-2">Öneri</p>
+                    <p className="text-sm text-foreground">Kumaş: {recommendation.fabric}</p>
+                    <p className="mt-2 text-sm text-foreground">Kurgu: {recommendation.lining}</p>
+                    <p className="mt-2 text-sm text-foreground">Renk yönü: {recommendation.color}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-border/60 bg-card p-6 md:p-8 shadow-[0_20px_60px_rgba(120,113,108,0.10)]">
+                <form onSubmit={handleQuoteSubmit} className="space-y-5">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="quote-name" className="block text-sm text-muted-foreground mb-2">
+                        Ad Soyad *
+                      </label>
+                      <input
+                        id="quote-name"
+                        name="name"
+                        type="text"
+                        required
+                        value={quoteForm.name}
+                        onChange={handleQuoteInputChange}
+                        className="w-full rounded-xl border border-border/70 bg-background px-4 py-3 text-foreground outline-none transition focus:border-foreground/40"
+                        placeholder="Adınızı girin"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="quote-email" className="block text-sm text-muted-foreground mb-2">
+                        E-posta *
+                      </label>
+                      <input
+                        id="quote-email"
+                        name="email"
+                        type="email"
+                        required
+                        value={quoteForm.email}
+                        onChange={handleQuoteInputChange}
+                        className="w-full rounded-xl border border-border/70 bg-background px-4 py-3 text-foreground outline-none transition focus:border-foreground/40"
+                        placeholder="ornek@email.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="quote-phone" className="block text-sm text-muted-foreground mb-2">
+                        Telefon
+                      </label>
+                      <input
+                        id="quote-phone"
+                        name="phone"
+                        type="tel"
+                        value={quoteForm.phone}
+                        onChange={handleQuoteInputChange}
+                        className="w-full rounded-xl border border-border/70 bg-background px-4 py-3 text-foreground outline-none transition focus:border-foreground/40"
+                        placeholder="+90 5xx xxx xx xx"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="quote-quantity" className="block text-sm text-muted-foreground mb-2">
+                        Adet *
+                      </label>
+                      <input
+                        id="quote-quantity"
+                        name="quantity"
+                        type="number"
+                        min="1"
+                        required
+                        value={quoteForm.quantity}
+                        onChange={handleQuoteInputChange}
+                        className="w-full rounded-xl border border-border/70 bg-background px-4 py-3 text-foreground outline-none transition focus:border-foreground/40"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="quote-width" className="block text-sm text-muted-foreground mb-2">
+                        Genişlik (cm) *
+                      </label>
+                      <input
+                        id="quote-width"
+                        name="width"
+                        type="number"
+                        min="1"
+                        step="0.1"
+                        required
+                        value={quoteForm.width}
+                        onChange={handleQuoteInputChange}
+                        className="w-full rounded-xl border border-border/70 bg-background px-4 py-3 text-foreground outline-none transition focus:border-foreground/40"
+                        placeholder="Örn. 240"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="quote-height" className="block text-sm text-muted-foreground mb-2">
+                        Yükseklik (cm) *
+                      </label>
+                      <input
+                        id="quote-height"
+                        name="height"
+                        type="number"
+                        min="1"
+                        step="0.1"
+                        required
+                        value={quoteForm.height}
+                        onChange={handleQuoteInputChange}
+                        className="w-full rounded-xl border border-border/70 bg-background px-4 py-3 text-foreground outline-none transition focus:border-foreground/40"
+                        placeholder="Örn. 260"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="quote-notes" className="block text-sm text-muted-foreground mb-2">
+                      Ek Notlar
+                    </label>
+                    <textarea
+                      id="quote-notes"
+                      name="notes"
+                      rows={4}
+                      value={quoteForm.notes}
+                      onChange={handleQuoteInputChange}
+                      className="w-full rounded-xl border border-border/70 bg-background px-4 py-3 text-foreground outline-none transition focus:border-foreground/40"
+                      placeholder="Ray tipi, pencere adedi, montaj bilgisi veya özel notunuzu yazın"
+                    />
+                  </div>
+
+                  {submitStatus !== 'idle' && (
+                    <div
+                      className={`rounded-xl border px-4 py-3 text-sm ${
+                        submitStatus === 'success'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : 'border-red-200 bg-red-50 text-red-700'
+                      }`}
+                    >
+                      {submitMessage}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="inline-flex items-center justify-center rounded-full bg-foreground px-6 py-3 text-sm tracking-wide text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSubmitting ? 'Gönderiliyor...' : ctaButtonText}
+                    </button>
+                    <a
+                      href={contact.phoneHref}
+                      className="inline-flex items-center justify-center rounded-full border border-border/70 px-6 py-3 text-sm tracking-wide text-foreground transition hover:border-foreground/40 hover:bg-sand-50"
+                    >
+                      Telefonla Ulaşın
+                    </a>
+                  </div>
+                </form>
               </div>
             </div>
           </div>

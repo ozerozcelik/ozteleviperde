@@ -513,7 +513,7 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         title: 'Uzmanlarımızla Netleştirin',
         content:
           'Asistan size başlangıç yönü verir. Ölçü, kumaş ve katman kararını birlikte netleştirmek için ekibimizle iletişime geçin.',
-        link: '/#iletisim',
+        link: '#teklif-formu',
         linkText: 'Teklif Al',
       },
     ],
