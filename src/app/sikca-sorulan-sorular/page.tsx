@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { OzTeleviLogo } from '@/components/OzTeleviLogo'
@@ -71,6 +71,68 @@ function mergeSection(
 function normalizeText(value: string | null | undefined, fallback: string) {
   const trimmed = value?.trim()
   return trimmed ? trimmed : fallback
+}
+
+function parseFaqEditorItem(item: string | undefined) {
+  if (!item) {
+    return {
+      question: '',
+      answer: '',
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(item) as {
+      question?: string
+      answer?: string
+    }
+
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return {
+        question: typeof parsed.question === 'string' ? parsed.question : '',
+        answer: typeof parsed.answer === 'string' ? parsed.answer : '',
+      }
+    }
+  } catch {
+    // Legacy pipe-delimited values are still supported.
+  }
+
+  const [question, ...rest] = item.split('|').map((part) => part.trim())
+
+  return {
+    question: question || '',
+    answer: rest.join(' | '),
+  }
+}
+
+function parseManagedFaqFallbacks(items: string[] | undefined, fallbackFaqs: FAQ[]): FAQ[] {
+  if (!Array.isArray(items) || items.length === 0) {
+    return fallbackFaqs
+  }
+
+  const parsedItems = items
+    .map((item, index) => {
+      const fallback = fallbackFaqs[index]
+      const parsed = parseFaqEditorItem(item)
+      const question = parsed.question || fallback?.question || ''
+      const answer = parsed.answer || fallback?.answer || ''
+
+      if (!question || !answer) return null
+
+      return {
+        id: fallback?.id || `managed-${index + 1}`,
+        question,
+        answer,
+        category: fallback?.category || 'genel',
+        order: fallback?.order || index + 1,
+        active: true,
+        createdAt: fallback?.createdAt || new Date().toISOString(),
+        updatedAt: fallback?.updatedAt || new Date().toISOString(),
+      }
+    })
+    .filter((item): item is FAQ => Boolean(item))
+
+  return parsedItems.length > 0 ? parsedItems : fallbackFaqs
 }
 
 function getFallbackFAQs({
@@ -184,16 +246,29 @@ export default function FAQPage() {
   const { contact, structuredData } = useSiteSettings()
   const { content: managedPage, loading } = usePageContent('sikca-sorulan-sorular')
   const baseline = getPageEditorPreset('sikca-sorulan-sorular')
-  const fallbackFAQs = getFallbackFAQs({
-    address: contact.address,
-    weekdays: structuredData.openingHours.weekdays,
-    saturday: structuredData.openingHours.saturday,
-  })
+  const fallbackFAQs = useMemo(
+    () =>
+      getFallbackFAQs({
+        address: contact.address,
+        weekdays: structuredData.openingHours.weekdays,
+        saturday: structuredData.openingHours.saturday,
+      }),
+    [contact.address, structuredData.openingHours.saturday, structuredData.openingHours.weekdays]
+  )
   const pageSections = parseSections(managedPage?.sections)
+  const faqSampleSection = mergeSection(
+    'faq-sample-questions',
+    baseline?.sections.find((section) => section.key === 'faq-sample-questions'),
+    pageSections
+  )
   const faqCtaSection = mergeSection(
     'faq-cta',
     baseline?.sections.find((section) => section.key === 'faq-cta'),
     pageSections
+  )
+  const managedFallbackFaqs = useMemo(
+    () => parseManagedFaqFallbacks(faqSampleSection?.items, fallbackFAQs),
+    [faqSampleSection?.items, fallbackFAQs]
   )
 
   const [activeSection, setActiveSection] = useState('')
@@ -241,17 +316,17 @@ export default function FAQPage() {
         if (data.success && data.data && data.data.length > 0) {
           setFaqs(data.data)
         } else {
-          setFaqs(fallbackFAQs)
+          setFaqs(managedFallbackFaqs)
         }
       } catch (error) {
         console.error('Error fetching FAQs:', error)
-        setFaqs(fallbackFAQs)
+        setFaqs(managedFallbackFaqs)
       } finally {
         setIsLoading(false)
       }
     }
     fetchFAQs()
-  }, [])
+  }, [managedFallbackFaqs])
 
   const filteredFAQs =
     activeCategory === 'tumu'

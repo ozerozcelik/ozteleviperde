@@ -226,6 +226,49 @@ function formatFeatureItem(title: string, description: string) {
   return `${title} - ${description}`
 }
 
+function parseFaqEditorItem(
+  item: string | undefined,
+  fallbackQuestion = '',
+  fallbackAnswer = ''
+) {
+  if (!item) {
+    return {
+      question: fallbackQuestion,
+      answer: fallbackAnswer,
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(item) as {
+      question?: string
+      answer?: string
+    }
+
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return {
+        question: typeof parsed.question === 'string' ? parsed.question : fallbackQuestion,
+        answer: typeof parsed.answer === 'string' ? parsed.answer : fallbackAnswer,
+      }
+    }
+  } catch {
+    // Legacy pipe-delimited values are still supported.
+  }
+
+  const [question, ...rest] = item.split('|').map((part) => part.trim())
+
+  return {
+    question: question || fallbackQuestion,
+    answer: rest.join(' | ') || fallbackAnswer,
+  }
+}
+
+function formatFaqEditorItem(question: string, answer: string) {
+  return JSON.stringify({
+    question,
+    answer,
+  })
+}
+
 function parseTeamMemberItem(item: string | undefined) {
   if (!item) {
     return {
@@ -3114,6 +3157,93 @@ export default function AdminPage() {
                                       </div>
                                     ))}
                                   </div>
+                                ) : section.key === 'faq-sample-questions' ? (
+                                  (() => {
+                                    const baselineFaqItems =
+                                      pageBaseline?.sections.find((entry) => entry.key === 'faq-sample-questions')?.items || []
+                                    const faqItems = Array.from(
+                                      { length: Math.max(1, baselineFaqItems.length, section.items?.length || 0) },
+                                      (_, itemIndex) => section.items?.[itemIndex] ?? baselineFaqItems[itemIndex] ?? ''
+                                    )
+
+                                    return (
+                                      <div className="space-y-4">
+                                        {faqItems.map((item: string, i: number) => {
+                                          const fallbackEntry = parseFaqEditorItem(baselineFaqItems[i])
+                                          const entry = parseFaqEditorItem(item, fallbackEntry.question, fallbackEntry.answer)
+
+                                          return (
+                                            <div key={i} className="rounded-xl border border-stone-200 p-4 space-y-3">
+                                              <div className="flex items-center justify-between gap-3">
+                                                <Label>{`SSS Maddesi ${i + 1}`}</Label>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => {
+                                                    const newSections = [...pageSections]
+                                                    newSections[index].items = faqItems.filter((_: any, xi: number) => xi !== i)
+                                                    setSectionsWithHistory(newSections)
+                                                  }}
+                                                >
+                                                  Kaldır
+                                                </Button>
+                                              </div>
+                                              <div className="space-y-2">
+                                                <Label>Soru</Label>
+                                                <Input
+                                                  placeholder="Soru"
+                                                  value={entry.question}
+                                                  onChange={(e) => {
+                                                    const newSections = [...pageSections]
+                                                    const currentEntry = parseFaqEditorItem(
+                                                      faqItems[i],
+                                                      fallbackEntry.question,
+                                                      fallbackEntry.answer
+                                                    )
+                                                    const nextItems = [...faqItems]
+                                                    nextItems[i] = formatFaqEditorItem(e.target.value, currentEntry.answer)
+                                                    newSections[index].items = nextItems
+                                                    setSectionsWithHistory(newSections)
+                                                  }}
+                                                />
+                                              </div>
+                                              <div className="space-y-2">
+                                                <Label>Cevap</Label>
+                                                <Textarea
+                                                  rows={4}
+                                                  placeholder="Cevap"
+                                                  value={entry.answer}
+                                                  onChange={(e) => {
+                                                    const newSections = [...pageSections]
+                                                    const currentEntry = parseFaqEditorItem(
+                                                      faqItems[i],
+                                                      fallbackEntry.question,
+                                                      fallbackEntry.answer
+                                                    )
+                                                    const nextItems = [...faqItems]
+                                                    nextItems[i] = formatFaqEditorItem(currentEntry.question, e.target.value)
+                                                    newSections[index].items = nextItems
+                                                    setSectionsWithHistory(newSections)
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
+                                          )
+                                        })}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            const newSections = [...pageSections]
+                                            newSections[index].items = [...faqItems, formatFaqEditorItem('', '')]
+                                            setSectionsWithHistory(newSections)
+                                          }}
+                                        >
+                                          + SSS Maddesi Ekle
+                                        </Button>
+                                      </div>
+                                    )
+                                  })()
                                 ) : (
                                   <div className="space-y-2">
                                     {(section.items || ['', '', '']).map((item: string, i: number) => (
