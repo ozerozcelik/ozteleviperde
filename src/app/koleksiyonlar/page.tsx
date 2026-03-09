@@ -8,7 +8,7 @@ import SocialMediaButtons from '@/components/SocialMediaButtons'
 import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
-import { buildManagedCollectionsFromSections, type CollectionItem } from '@/lib/managed-collections'
+import { type CollectionItem, parseManagedSections } from '@/lib/managed-collections'
 
 // ============================================
 // Types
@@ -110,12 +110,33 @@ export default function CollectionsPage() {
   useEffect(() => {
     const fetchCollections = async () => {
       try {
-        // Try to fetch from API
-        const res = await fetch('/api/collections')
+        const res = await fetch('/api/products?limit=100')
         if (res.ok) {
           const data = await res.json()
           if (data.success && data.data && data.data.length > 0) {
-            setCollections(data.data)
+            setCollections(
+              data.data.map((product: {
+                id: string
+                name: string
+                slug: string
+                description: string | null
+                image: string | null
+                featured: boolean
+                order: number
+                createdAt: string
+                updatedAt: string
+              }) => ({
+                id: product.id,
+                name: product.name,
+                slug: product.slug,
+                description: product.description,
+                image: product.image,
+                featured: product.featured,
+                order: product.order,
+                createdAt: product.createdAt,
+                updatedAt: product.updatedAt,
+              }))
+            )
           } else {
             setCollections(fallbackCollections)
           }
@@ -132,12 +153,10 @@ export default function CollectionsPage() {
     fetchCollections()
   }, [])
 
-  const {
-    featuredSection,
-    allSection,
-    ctaSection,
-    collections: managedCollections,
-  } = buildManagedCollectionsFromSections(managedPage?.sections)
+  const managedSections = parseManagedSections(managedPage?.sections)
+  const featuredSection = managedSections.find((section) => section.key === 'collections-featured')
+  const allSection = managedSections.find((section) => section.key === 'collections-all')
+  const ctaSection = managedSections.find((section) => section.key === 'collections-cta')
 
   const navLinks = [
     { href: '/hakkimizda', label: 'Hakkımızda' },
@@ -146,9 +165,8 @@ export default function CollectionsPage() {
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
   ]
 
-  const displayCollections = managedCollections.length > 0 ? managedCollections : collections
-  const featuredCollections = displayCollections.filter((c) => c.featured)
-  const otherCollections = displayCollections.filter((c) => !c.featured)
+  const featuredCollections = collections.filter((c) => c.featured)
+  const otherCollections = collections.filter((c) => !c.featured)
   const heroTitle = managedPage?.heroTitle || 'Zamansız tasarımlar'
   const heroSubtitle =
     managedPage?.heroSubtitle ||
@@ -284,7 +302,7 @@ export default function CollectionsPage() {
         </section>
 
         {/* Loading State */}
-        {isLoading && managedCollections.length === 0 && (
+        {isLoading && (
           <section className="py-24">
             <div className="flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
@@ -339,7 +357,7 @@ export default function CollectionsPage() {
         )}
 
         {/* Empty State */}
-        {!isLoading && displayCollections.length === 0 && (
+        {!isLoading && collections.length === 0 && (
           <section className="py-24 bg-background">
             <div className="max-w-md mx-auto px-6 text-center">
               <p className="text-muted-foreground">
@@ -400,7 +418,7 @@ function CollectionCard({
 }) {
   return (
     <Link
-      href={`/koleksiyonlar/${collection.slug}`}
+      href={`/urun/${collection.slug}`}
       className={`group block relative rounded-2xl overflow-hidden ${
         featured ? 'aspect-[4/3]' : 'aspect-[3/4]'
       }`}
