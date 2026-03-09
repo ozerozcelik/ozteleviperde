@@ -2793,26 +2793,27 @@ export default function AdminPage() {
                                   (() => {
                                     const baselineTeamItems =
                                       pageBaseline?.sections.find((entry) => entry.key === 'about-team')?.items || []
+                                    const hasCustomTeamItems = Array.isArray(section.items)
                                     const teamItems = Array.from(
-                                      { length: Math.max(1, baselineTeamItems.length, section.items?.length || 0) },
+                                      {
+                                        length: hasCustomTeamItems
+                                          ? (section.items?.length || 0)
+                                          : Math.max(1, baselineTeamItems.length),
+                                      },
                                       (_, itemIndex) => section.items?.[itemIndex] ?? baselineTeamItems[itemIndex] ?? ''
                                     )
 
                                     return (
                                       <div className="space-y-4">
                                         {teamItems.map((item: string, i: number) => {
-                                          const hasStoredItem = section.items?.[i] !== undefined
-                                          const currentItem = hasStoredItem ? section.items?.[i] : baselineTeamItems[i]
-                                          const member = parseTeamMemberItem(currentItem)
                                           const fallbackMember = parseTeamMemberItem(baselineTeamItems[i])
-                                          const resolvedMember = hasStoredItem
-                                            ? member
-                                            : {
-                                                name: member.name || fallbackMember.name,
-                                                role: member.role || fallbackMember.role,
-                                                bio: member.bio || fallbackMember.bio,
-                                                image: member.image || fallbackMember.image,
-                                              }
+                                          const member = parseTeamMemberItem(item)
+                                          const resolvedMember = {
+                                            name: member.name || fallbackMember.name,
+                                            role: member.role || fallbackMember.role,
+                                            bio: member.bio || fallbackMember.bio,
+                                            image: member.image || fallbackMember.image,
+                                          }
 
                                           return (
                                             <div key={i} className="rounded-xl border border-stone-200 p-4 space-y-3">
@@ -2836,13 +2837,12 @@ export default function AdminPage() {
                                                   value={resolvedMember.name}
                                                   onChange={(e) => {
                                                     const newSections = [...pageSections]
-                                                    const currentMember = parseTeamMemberItem(currentItem)
                                                     const nextItems = [...teamItems]
                                                     nextItems[i] = formatTeamMemberItem(
                                                       e.target.value,
-                                                      currentMember.role,
-                                                      currentMember.bio,
-                                                      currentMember.image
+                                                      resolvedMember.role,
+                                                      resolvedMember.bio,
+                                                      resolvedMember.image
                                                     )
                                                     newSections[index].items = nextItems
                                                     setSectionsWithHistory(newSections)
@@ -2853,13 +2853,12 @@ export default function AdminPage() {
                                                   value={resolvedMember.role}
                                                   onChange={(e) => {
                                                     const newSections = [...pageSections]
-                                                    const currentMember = parseTeamMemberItem(currentItem)
                                                     const nextItems = [...teamItems]
                                                     nextItems[i] = formatTeamMemberItem(
-                                                      currentMember.name,
+                                                      resolvedMember.name,
                                                       e.target.value,
-                                                      currentMember.bio,
-                                                      currentMember.image
+                                                      resolvedMember.bio,
+                                                      resolvedMember.image
                                                     )
                                                     newSections[index].items = nextItems
                                                     setSectionsWithHistory(newSections)
@@ -2872,13 +2871,12 @@ export default function AdminPage() {
                                                 value={resolvedMember.bio}
                                                 onChange={(e) => {
                                                   const newSections = [...pageSections]
-                                                  const currentMember = parseTeamMemberItem(currentItem)
                                                   const nextItems = [...teamItems]
                                                   nextItems[i] = formatTeamMemberItem(
-                                                    currentMember.name,
-                                                    currentMember.role,
+                                                    resolvedMember.name,
+                                                    resolvedMember.role,
                                                     e.target.value,
-                                                    currentMember.image
+                                                    resolvedMember.image
                                                   )
                                                   newSections[index].items = nextItems
                                                   setSectionsWithHistory(newSections)
@@ -2890,12 +2888,11 @@ export default function AdminPage() {
                                                   value={resolvedMember.image}
                                                   onChange={(e) => {
                                                     const newSections = [...pageSections]
-                                                    const currentMember = parseTeamMemberItem(currentItem)
                                                     const nextItems = [...teamItems]
                                                     nextItems[i] = formatTeamMemberItem(
-                                                      currentMember.name,
-                                                      currentMember.role,
-                                                      currentMember.bio,
+                                                      resolvedMember.name,
+                                                      resolvedMember.role,
+                                                      resolvedMember.bio,
                                                       e.target.value
                                                     )
                                                     newSections[index].items = nextItems
@@ -2918,12 +2915,11 @@ export default function AdminPage() {
                                                           tags: ['page', selectedPageSlug, 'about-team-member'],
                                                         })
                                                         const newSections = [...pageSections]
-                                                        const currentMember = parseTeamMemberItem(currentItem)
                                                         const nextItems = [...teamItems]
                                                         nextItems[i] = formatTeamMemberItem(
-                                                          currentMember.name,
-                                                          currentMember.role,
-                                                          currentMember.bio,
+                                                          resolvedMember.name,
+                                                          resolvedMember.role,
+                                                          resolvedMember.bio,
                                                           uploadedUrl
                                                         )
                                                         newSections[index].items = nextItems
