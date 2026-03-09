@@ -279,9 +279,6 @@ function Navigation({ activeSection, onSearchClick }: { activeSection: string; o
 
         <div className="hidden lg:block border-t border-border/40 pb-4 pt-3">
           <div className="mx-auto flex max-w-4xl items-center gap-3 rounded-full border border-border/50 bg-background/70 px-4 py-2 shadow-[0_12px_40px_rgba(120,113,108,0.12)] backdrop-blur-xl">
-            <span className="shrink-0 text-[11px] tracking-[0.24em] uppercase text-muted-foreground">
-              Anasayfa Bölümleri
-            </span>
             <div className="flex-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex min-w-max items-center gap-2 pr-1">
                 {sectionLinks.map((link) => (
@@ -323,9 +320,6 @@ function Navigation({ activeSection, onSearchClick }: { activeSection: string; o
               </Link>
             ))}
             <div className="pt-2 border-t border-border/50">
-              <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground mb-3">
-                Anasayfa Bölümleri
-              </p>
               <div className="overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex min-w-max gap-2">
                 {sectionLinks.map((link) => (
