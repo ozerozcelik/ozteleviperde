@@ -153,6 +153,17 @@ interface Product {
   createdAt: string
 }
 
+interface Collection {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  image: string | null
+  featured: boolean
+  order: number
+  createdAt: string
+}
+
 const EMPTY_PAGE_FORM = {
   title: '',
   seoTitle: '',
@@ -539,6 +550,7 @@ export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [quotes, setQuotes] = useState<QuoteRequest[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [collections, setCollections] = useState<Collection[]>([])
   const [pages, setPages] = useState<ContentPage[]>([])
   const [pagesError, setPagesError] = useState('')
   const [pageDetailError, setPageDetailError] = useState('')
@@ -578,6 +590,18 @@ export default function AdminPage() {
   const [newFeature, setNewFeature] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
+  const [collectionDialogOpen, setCollectionDialogOpen] = useState(false)
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
+  const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null)
+  const [deleteCollectionDialogOpen, setDeleteCollectionDialogOpen] = useState(false)
+  const [collectionForm, setCollectionForm] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    image: '',
+    featured: false,
+    order: '0',
+  })
 
   // Upload states
   const [isUploading, setIsUploading] = useState(false)
@@ -644,6 +668,16 @@ export default function AdminPage() {
       if (data.success) setProducts(data.data)
     } catch (error) {
       console.error('Error fetching products:', error)
+    }
+  }, [])
+
+  const fetchCollections = useCallback(async () => {
+    try {
+      const res = await fetch('/api/collections?limit=100')
+      const data = await res.json()
+      if (data.success) setCollections(data.data)
+    } catch (error) {
+      console.error('Error fetching collections:', error)
     }
   }, [])
 
@@ -884,12 +918,13 @@ export default function AdminPage() {
       fetchContacts(),
       fetchNewsletters(),
       fetchProducts(),
+      fetchCollections(),
       fetchQuotes(),
       fetchOrders(),
       fetchPages(),
     ])
     setIsLoading(false)
-  }, [fetchDashboardStats, fetchContacts, fetchNewsletters, fetchProducts, fetchQuotes, fetchOrders, fetchPages])
+  }, [fetchCollections, fetchDashboardStats, fetchContacts, fetchNewsletters, fetchProducts, fetchQuotes, fetchOrders, fetchPages])
 
   useEffect(() => {
     if (isAuthenticated && !hasFetchedRef.current) {
@@ -949,6 +984,12 @@ export default function AdminPage() {
       void fetchMediaLibrary()
     }
   }, [fetchMediaLibrary, isAuthenticated, productDialogOpen])
+
+  useEffect(() => {
+    if (isAuthenticated && collectionDialogOpen) {
+      void fetchMediaLibrary()
+    }
+  }, [collectionDialogOpen, fetchMediaLibrary, isAuthenticated])
 
   const handleUndoSections = () => {
     if (sectionHistory.length === 0) return
@@ -1145,6 +1186,82 @@ export default function AdminPage() {
     }
   }
 
+  const handleCreateCollection = async () => {
+    try {
+      const res = await fetch('/api/collections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: collectionForm.name,
+          slug: collectionForm.slug,
+          description: collectionForm.description || null,
+          image: collectionForm.image || null,
+          featured: collectionForm.featured,
+          order: Number(collectionForm.order || 0),
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setCollectionDialogOpen(false)
+        resetCollectionForm()
+        fetchCollections()
+      } else {
+        alert(data.error || 'Koleksiyon eklenirken bir hata oluştu.')
+      }
+    } catch (error) {
+      console.error('Error creating collection:', error)
+      alert('Koleksiyon eklenirken bir hata oluştu.')
+    }
+  }
+
+  const handleUpdateCollection = async () => {
+    if (!editingCollection) return
+    try {
+      const res = await fetch('/api/collections', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingCollection.id,
+          name: collectionForm.name,
+          slug: collectionForm.slug,
+          description: collectionForm.description || null,
+          image: collectionForm.image || null,
+          featured: collectionForm.featured,
+          order: Number(collectionForm.order || 0),
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setCollectionDialogOpen(false)
+        resetCollectionForm()
+        fetchCollections()
+      } else {
+        alert(data.error || 'Koleksiyon güncellenirken bir hata oluştu.')
+      }
+    } catch (error) {
+      console.error('Error updating collection:', error)
+      alert('Koleksiyon güncellenirken bir hata oluştu.')
+    }
+  }
+
+  const handleDeleteCollection = async () => {
+    if (!collectionToDelete) return
+    try {
+      const res = await fetch(`/api/collections?id=${collectionToDelete.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.success) {
+        setDeleteCollectionDialogOpen(false)
+        setCollectionToDelete(null)
+        fetchCollections()
+      } else {
+        alert(data.error || 'Koleksiyon silinirken bir hata oluştu.')
+      }
+    } catch (error) {
+      console.error('Error deleting collection:', error)
+      alert('Koleksiyon silinirken bir hata oluştu.')
+    }
+  }
+
   const openEditProduct = (product: Product) => {
     setEditingProduct(product)
     let parsedFeatures: string[] = []
@@ -1174,6 +1291,19 @@ export default function AdminPage() {
     setProductDialogOpen(true)
   }
 
+  const openEditCollection = (collection: Collection) => {
+    setEditingCollection(collection)
+    setCollectionForm({
+      name: collection.name,
+      slug: collection.slug,
+      description: collection.description || '',
+      image: collection.image || '',
+      featured: collection.featured,
+      order: collection.order.toString(),
+    })
+    setCollectionDialogOpen(true)
+  }
+
   const resetProductForm = () => {
     setProductForm({
       name: '',
@@ -1192,6 +1322,18 @@ export default function AdminPage() {
     })
     setNewFeature('')
     setEditingProduct(null)
+  }
+
+  const resetCollectionForm = () => {
+    setCollectionForm({
+      name: '',
+      slug: '',
+      description: '',
+      image: '',
+      featured: false,
+      order: '0',
+    })
+    setEditingCollection(null)
   }
 
   const addFeature = () => {
@@ -1221,6 +1363,13 @@ export default function AdminPage() {
     value: string | boolean
   ) => {
     setProductForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const updateCollectionField = (
+    key: 'name' | 'slug' | 'description' | 'image' | 'featured' | 'order',
+    value: string | boolean
+  ) => {
+    setCollectionForm((prev) => ({ ...prev, [key]: value }))
   }
 
   const uploadMediaAsset = useCallback(
@@ -1279,6 +1428,29 @@ export default function AdminPage() {
       void fetchMediaLibrary()
     } catch (error) {
       console.error('Upload error:', error)
+      setUploadError(error instanceof Error ? error.message : 'Dosya yüklenirken bir hata oluştu.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleCollectionFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setUploadError('')
+    setIsUploading(true)
+
+    try {
+      const uploadedUrl = await uploadMediaAsset(files[0], {
+        folder: 'oztelevi/collections',
+        tags: ['collection', 'cover-image'],
+      })
+
+      setCollectionForm((prev) => ({ ...prev, image: uploadedUrl }))
+      void fetchMediaLibrary()
+    } catch (error) {
+      console.error('Collection upload error:', error)
       setUploadError(error instanceof Error ? error.message : 'Dosya yüklenirken bir hata oluştu.')
     } finally {
       setIsUploading(false)
@@ -1474,6 +1646,13 @@ export default function AdminPage() {
             }`}>
             <Package className="w-4 h-4" />
             Ürünler
+          </button>
+          <button onClick={() => setActiveTab('collections')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeTab === 'collections' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            }`}>
+            <ImageIcon className="w-4 h-4" />
+            Koleksiyonlar
           </button>
           <button onClick={() => setActiveTab('orders')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
@@ -1863,6 +2042,80 @@ export default function AdminPage() {
           </Card>
         )}
 
+        {activeTab === 'collections' && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Koleksiyonlar</h2>
+                  <p className="mt-1 text-sm text-stone-500">
+                    Koleksiyonlar sayfasındaki kartları buradan yönetin. İsim ve görsel eklemek yeterli.
+                  </p>
+                </div>
+                <Button onClick={() => { resetCollectionForm(); setCollectionDialogOpen(true) }}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Yeni Koleksiyon
+                </Button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {collections.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-stone-300 px-4 py-10 text-center text-sm text-stone-500 sm:col-span-2 xl:col-span-3">
+                    Henüz koleksiyon yok. Yeni koleksiyon ekleyerek başlayabilirsiniz.
+                  </div>
+                ) : (
+                  collections.map((collection) => (
+                    <div key={collection.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+                      <div className="relative aspect-[4/3] bg-stone-100">
+                        {collection.image ? (
+                          <Image src={collection.image} alt={collection.name} fill className="object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-stone-400">
+                            <ImageIcon className="h-8 w-8" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-3 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="truncate font-medium text-stone-900">{collection.name}</h3>
+                            <p className="mt-1 text-xs text-stone-500">/{collection.slug}</p>
+                          </div>
+                          {collection.featured && <Badge variant="outline">Öne Çıkan</Badge>}
+                        </div>
+                        <p className="min-h-10 text-sm text-stone-600">
+                          {collection.description || 'Açıklama girilmemiş.'}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-stone-500">
+                          <span>Sıra: {collection.order}</span>
+                          <span>{formatDate(collection.createdAt)}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => openEditCollection(collection)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Düzenle
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => {
+                              setCollectionToDelete(collection)
+                              setDeleteCollectionDialogOpen(true)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Orders Tab */}
         {activeTab === 'orders' && (
           <Card>
@@ -2137,6 +2390,13 @@ export default function AdminPage() {
                 {pageDetailError && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     {pageDetailError}
+                  </div>
+                )}
+
+                {selectedPageSlug === 'koleksiyonlar' && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                    Koleksiyon kartlarındaki isim, görsel ve kısa açıklamalar artık sol menüdeki <strong>Koleksiyonlar</strong> sekmesinden yönetilir.
+                    Bu ekranda yalnızca sayfanın hero ve genel metin alanlarını düzenlemelisin.
                   </div>
                 )}
 
@@ -3380,6 +3640,139 @@ export default function AdminPage() {
         onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
       />
 
+      <Dialog open={collectionDialogOpen} onOpenChange={setCollectionDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingCollection ? 'Koleksiyon Düzenle' : 'Yeni Koleksiyon Ekle'}</DialogTitle>
+            <DialogDescription>
+              Koleksiyon kartı için isim ve görsel yeterlidir. Açıklama, öne çıkarma ve sıralama isteğe bağlıdır.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 py-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Koleksiyon Adı *</Label>
+                <Input
+                  value={collectionForm.name}
+                  onChange={(e) => {
+                    updateCollectionField('name', e.target.value)
+                    if (!editingCollection) {
+                      updateCollectionField('slug', generateSlug(e.target.value))
+                    }
+                  }}
+                  placeholder="Örn. Lina Keten Serisi"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Slug *</Label>
+                <Input
+                  value={collectionForm.slug}
+                  onChange={(e) => updateCollectionField('slug', e.target.value)}
+                  placeholder="lina-keten-serisi"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Kısa Açıklama</Label>
+              <Textarea
+                value={collectionForm.description}
+                onChange={(e) => updateCollectionField('description', e.target.value)}
+                rows={3}
+                placeholder="Kart altında görünecek kısa açıklama"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Sıralama</Label>
+                <Input
+                  type="number"
+                  value={collectionForm.order}
+                  onChange={(e) => updateCollectionField('order', e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <label className="mt-7 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={collectionForm.featured}
+                  onChange={(e) => updateCollectionField('featured', e.target.checked)}
+                  className="h-4 w-4"
+                />
+                Öne çıkan koleksiyon
+              </label>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Kapak Görseli</Label>
+              <div className="flex flex-wrap items-start gap-4">
+                {collectionForm.image ? (
+                  <div className="relative h-28 w-28 overflow-hidden rounded-xl border border-stone-200">
+                    <Image src={collectionForm.image} alt="Collection cover" fill className="object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => updateCollectionField('image', '')}
+                      className="absolute right-2 top-2 rounded-full bg-black/70 p-1 text-white"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-300 text-stone-400 transition-colors hover:border-stone-400">
+                    <Upload className="h-6 w-6" />
+                    <span className="mt-1 text-xs">Yükle</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleCollectionFileUpload}
+                      disabled={isUploading}
+                    />
+                  </label>
+                )}
+                <div className="min-w-[220px] flex-1 space-y-2">
+                  <Input
+                    value={collectionForm.image}
+                    onChange={(e) => updateCollectionField('image', e.target.value)}
+                    placeholder="Görsel URL'si veya aşağıdan medya seç"
+                  />
+                  <p className="text-xs text-stone-500">
+                    İstersen yükle, istersen medya kütüphanesinden seç.
+                  </p>
+                </div>
+              </div>
+              {uploadError && <p className="text-sm text-red-500">{uploadError}</p>}
+            </div>
+
+            <MediaLibraryGrid
+              title="Medya Kütüphanesi"
+              mediaLibrary={mediaLibrary}
+              isMediaLoading={isMediaLoading}
+              onRefresh={() => void fetchMediaLibrary()}
+              onDelete={handleDeleteMedia}
+              onUpdateTags={handleUpdateMediaTags}
+              onSelectMain={(url) => updateCollectionField('image', url)}
+              onSelectGallery={(url) => updateCollectionField('image', url)}
+              compact
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCollectionDialogOpen(false)}>
+              İptal
+            </Button>
+            <Button
+              onClick={editingCollection ? handleUpdateCollection : handleCreateCollection}
+              disabled={isUploading || !collectionForm.name.trim() || !collectionForm.slug.trim()}
+            >
+              {editingCollection ? 'Güncelle' : 'Ekle'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Product Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
@@ -3392,6 +3785,21 @@ export default function AdminPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>İptal</Button>
             <Button variant="destructive" onClick={handleDeleteProduct}>Sil</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteCollectionDialogOpen} onOpenChange={setDeleteCollectionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Koleksiyonu Sil</DialogTitle>
+            <DialogDescription>
+              &quot;{collectionToDelete?.name}&quot; koleksiyonunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteCollectionDialogOpen(false)}>İptal</Button>
+            <Button variant="destructive" onClick={handleDeleteCollection}>Sil</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
