@@ -107,7 +107,7 @@ function Navigation({ activeSection, onSearchClick }: { activeSection: string; o
 
   const navLinks = [
     { href: '/hakkimizda', label: 'Hakkımızda' },
-    { href: '/koleksiyonlar', label: 'Koleksiyonlar' },
+    { href: '/koleksiyonlar', label: 'Ürünlerimiz' },
     { href: '/galeri', label: 'Galeri' },
     { href: '/blog', label: 'Blog' },
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
@@ -115,7 +115,7 @@ function Navigation({ activeSection, onSearchClick }: { activeSection: string; o
 
   const sectionLinks = [
     { href: '#felsefe', label: 'Felsefemiz' },
-    { href: '#koleksiyon', label: 'Koleksiyon' },
+    { href: '#koleksiyon', label: 'Ürünlerimiz' },
     { href: '#zanaat', label: 'Zanaat' },
     { href: '#mekanlar', label: 'Mekanlar' },
   ]
@@ -1393,7 +1393,7 @@ function Footer({ content }: { content: HomePageContent['footer'] }) {
           {/* Quick Links */}
           <div>
             <h4 className="text-sm font-medium text-foreground mb-4">
-              Koleksiyon
+              Ürünlerimiz
             </h4>
             <ul className="space-y-3">
               {content.collectionLinks.map((item) => (

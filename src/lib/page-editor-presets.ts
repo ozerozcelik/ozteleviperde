@@ -108,7 +108,7 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
     heroSubtitle:
       'Japon estetiğinin sade güzelliği ve İskandinav sadeliğinden ilham alan, el işçiliği tekstiller ve perdeler. Her parça, yaşam alanınıza huzur, doğal ışık ve zamansız bir zarafet davetiyesidir.',
     heroImage: '/images/hero.png',
-    heroCtaText: 'Koleksiyonu Keşfet',
+    heroCtaText: 'Ürünlerimizi Keşfet',
     heroCtaLink: '#koleksiyon',
     htmlContent: '',
     schemaJson: '',
@@ -199,7 +199,7 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
       {
         key: 'footer-collection-links',
         type: 'features',
-        title: 'Footer Koleksiyon Linkleri',
+        title: 'Footer Ürünlerimiz Linkleri',
         content: 'Her satir su formatta olmali: Etiket | Link',
         items: [
           'Perdeler | /galeri',
@@ -246,7 +246,7 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
     heroTitle: 'Galeri',
     heroSubtitle: 'Yaşam alanlarınızı ilham verin',
     heroImage: '/images/hero.png',
-    heroCtaText: 'Koleksiyonları Gör',
+    heroCtaText: 'Ürünlerimizi Gör',
     heroCtaLink: '/koleksiyonlar',
     htmlContent: '',
     schemaJson: '',
@@ -281,7 +281,7 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         key: 'gallery-cta',
         type: 'cta',
         title: 'Mekanınız için uygun ürünü bulun',
-        content: 'Özel ölçü, kumaş ve uygulama seçenekleri için koleksiyonları inceleyin veya bizimle iletişime geçin.',
+        content: 'Özel ölçü, kumaş ve uygulama seçenekleri için ürünlerimizi inceleyin veya bizimle iletişime geçin.',
         link: '/#iletisim',
         linkText: 'Bize Ulaşın',
       },
@@ -364,21 +364,21 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         type: 'cta',
         title: 'Hikayemizin bir parçası olun',
         content:
-          'Showroom’umuzu ziyaret edin, koleksiyonumuzu keşfedin ve yaşam alanınızı dönüştürmeye başlayın.',
+          'Showroom’umuzu ziyaret edin, ürünlerimizi keşfedin ve yaşam alanınızı dönüştürmeye başlayın.',
         link: '/koleksiyonlar',
-        linkText: 'Koleksiyonları Gör',
+        linkText: 'Ürünlerimizi Gör',
       },
     ],
   }),
   koleksiyonlar: createPreset({
     slug: 'koleksiyonlar',
-    source: 'Kod tabanli canli koleksiyonlar sayfasi',
+    source: 'Kod tabanli canli urunlerimiz sayfasi',
     description:
-      'Bu referans, mevcut koleksiyonlar sayfasindaki hero, one cikan koleksiyonlar, diger koleksiyonlar ve CTA alanlarindan olusturuldu.',
-    title: 'Koleksiyonlar',
-    seoTitle: 'ÖzTelevi Koleksiyonlar | Zamansız Tasarımlar',
+      'Bu referans, mevcut urunlerimiz sayfasindaki hero, one cikan urunler, diger urunler ve CTA alanlarindan olusturuldu.',
+    title: 'Ürünlerimiz',
+    seoTitle: 'ÖzTelevi Ürünlerimiz | Zamansız Tasarımlar',
     seoDescription:
-      'ÖzTelevi koleksiyonlarını keşfedin. Japandi estetiğiyle tasarlanmış perde, tekstil ve yatak odası ürünleri tek bir sayfada.',
+      'ÖzTelevi ürünlerimizi keşfedin. Japandi estetiğiyle tasarlanmış perde, tekstil ve yatak odası ürünleri tek bir sayfada.',
     heroTitle: 'Zamansız tasarımlar',
     heroSubtitle:
       'Her koleksiyonumuz, yaşam alanlarınıza huzur ve zarafet katmak için özenle tasarlanmıştır. Japandi estetiğinin en güzel örneklerini keşfedin.',
@@ -391,22 +391,22 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
       {
         key: 'collections-featured',
         type: 'features',
-        title: 'Seçkin koleksiyonlar',
-        content: 'Canlı sayfada öne çıkan olarak listelenen koleksiyonlar.',
-        items: ['Aira Koleksiyonu', 'Moku Serisi', 'Sora Paneller'],
+        title: 'Öne çıkan ürünlerimiz',
+        content: 'Canlı sayfada öne çıkan olarak listelenen ürünler.',
+        items: ['Aira Serisi', 'Moku Serisi', 'Sora Paneller'],
       },
       {
         key: 'collections-all',
         type: 'features',
-        title: 'Diğer koleksiyonlar',
-        content: 'Canlı sayfada öne çıkanlar dışında kalan koleksiyonlar.',
-        items: ['Nami Yatak Odası', 'Kumo Tekstiller', 'Yuki Kış Koleksiyonu'],
+        title: 'Diğer ürünlerimiz',
+        content: 'Canlı sayfada öne çıkanlar dışında kalan ürünler.',
+        items: ['Nami Yatak Odası', 'Kumo Tekstiller', 'Yuki Kış Serisi'],
       },
       {
         key: 'collections-gallery',
         type: 'gallery',
-        title: 'Koleksiyon Görselleri',
-        content: 'Fallback koleksiyonlardan gelen örnek ürün görselleri.',
+        title: 'Ürün Görselleri',
+        content: 'Fallback ürünlerden gelen örnek görseller.',
         items: [
           '/images/hero.png',
           '/images/product-textile.png',
@@ -540,7 +540,7 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
         type: 'text',
         title: 'Karşılama Mesajı',
         content:
-          'ÖzTelevi ailesine katılın ve yaşam alanlarınıza huzur getiren özel koleksiyonlardan haberdar olun.',
+          'ÖzTelevi ailesine katılın ve yaşam alanlarınıza huzur getiren özel ürünlerimizden haberdar olun.',
       },
       {
         key: 'login-tabs',

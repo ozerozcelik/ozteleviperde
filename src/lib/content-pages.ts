@@ -3,7 +3,7 @@ export const MANAGED_PAGE_SLUGS = [
   { slug: 'site-ayarlari', title: 'Genel Site Ayarlari', path: '/admin/site-ayarlari' },
   { slug: 'galeri', title: 'Galeri', path: '/galeri' },
   { slug: 'hakkimizda', title: 'Hakkimizda', path: '/hakkimizda' },
-  { slug: 'koleksiyonlar', title: 'Koleksiyonlar', path: '/koleksiyonlar' },
+  { slug: 'koleksiyonlar', title: 'Ürünlerimiz', path: '/koleksiyonlar' },
   { slug: 'sikca-sorulan-sorular', title: 'Sikca Sorulan Sorular', path: '/sikca-sorulan-sorular' },
   { slug: 'visualizer', title: 'Perde Secim Asistani', path: '/visualizer' },
   { slug: 'giris', title: 'Giris', path: '/giris' },

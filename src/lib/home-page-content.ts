@@ -359,7 +359,7 @@ export async function getHomePageContent(): Promise<HomePageContent> {
       ]),
     },
     products: {
-      eyebrow: 'Koleksiyon',
+      eyebrow: 'Ürünlerimiz',
       title: normalizeText(productsSection.title, baselineSections[2].title || ''),
       description: normalizeText(productsSection.content, baselineSections[2].content || ''),
     },

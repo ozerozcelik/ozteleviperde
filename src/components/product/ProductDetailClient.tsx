@@ -266,7 +266,7 @@ export default function ProductDetailClient({
 
   const navLinks = [
     { href: '/#felsefe', label: 'Felsefemiz' },
-    { href: '/#koleksiyon', label: 'Koleksiyon' },
+    { href: '/#koleksiyon', label: 'Ürünlerimiz' },
     { href: '/#zanaat', label: 'Zanaat' },
     { href: '/#mekanlar', label: 'Mekanlar' },
   ]
@@ -314,7 +314,7 @@ export default function ProductDetailClient({
       <BreadcrumbJsonLd
         items={[
           { name: 'Ana Sayfa', url: '/' },
-          { name: 'Koleksiyon', url: '/#koleksiyon' },
+          { name: 'Ürünlerimiz', url: '/#koleksiyon' },
           { name: displayProduct.name, url: `/urun/${displayProduct.slug}` },
         ]}
       />
@@ -415,7 +415,7 @@ export default function ProductDetailClient({
             </a>
             <span>/</span>
             <a href="/#koleksiyon" className="hover:text-foreground transition-colors">
-              Koleksiyon
+              Ürünlerimiz
             </a>
             <span>/</span>
             <span className="text-foreground">{displayProduct.name}</span>
@@ -1020,7 +1020,7 @@ function Footer() {
               </li>
               <li>
                 <a href="/#koleksiyon" className="text-background/70 hover:text-background transition-colors text-sm">
-                  Koleksiyon
+                  Ürünlerimiz
                 </a>
               </li>
               <li>

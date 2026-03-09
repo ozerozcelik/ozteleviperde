@@ -441,7 +441,7 @@ export default function VisualizerPage() {
                 Hakkımızda
               </Link>
               <Link href="/koleksiyonlar" className="text-sm tracking-wide text-muted-foreground hover:text-foreground transition-all duration-500">
-                Koleksiyonlar
+                Ürünlerimiz
               </Link>
               <Link href="/galeri" className="text-sm tracking-wide text-muted-foreground hover:text-foreground transition-all duration-500">
                 Galeri
@@ -485,7 +485,7 @@ export default function VisualizerPage() {
             <div className="flex flex-col gap-4 pt-4">
               {[
                 { href: '/hakkimizda', label: 'Hakkımızda' },
-                { href: '/koleksiyonlar', label: 'Koleksiyonlar' },
+                { href: '/koleksiyonlar', label: 'Ürünlerimiz' },
                 { href: '/galeri', label: 'Galeri' },
                 { href: '/blog', label: 'Blog' },
               ].map((link) => (

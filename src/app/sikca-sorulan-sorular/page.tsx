@@ -325,7 +325,7 @@ export default function FAQPage() {
   const navLinks = [
     { href: '/hakkimizda', label: 'Hakkımızda' },
     { href: '/galeri', label: 'Galeri' },
-    { href: '/koleksiyonlar', label: 'Koleksiyonlar' },
+    { href: '/koleksiyonlar', label: 'Ürünlerimiz' },
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
   ]
   const heroEyebrow = normalizeText(managedPage?.heroCtaText, 'Destek')
@@ -630,7 +630,7 @@ function Footer() {
               </li>
               <li>
                 <Link href="/koleksiyonlar" className="text-background/70 hover:text-background text-sm transition-colors">
-                  Koleksiyonlar
+                  Ürünlerimiz
                 </Link>
               </li>
               <li>
@@ -665,7 +665,7 @@ function Footer() {
           <div>
             <h3 className="font-medium mb-4">Bülten</h3>
             <p className="text-background/70 text-sm mb-4">
-              Yeni koleksiyonlar ve özel tekliflerden haberdar olun.
+              Yeni ürünlerimiz ve özel tekliflerden haberdar olun.
             </p>
             <form onSubmit={handleNewsletterSubmit} className="space-y-3">
               <input

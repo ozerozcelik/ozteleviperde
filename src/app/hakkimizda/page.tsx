@@ -210,7 +210,7 @@ export default function AboutPage() {
   const navLinks = [
     { href: '/hakkimizda', label: 'Hakkımızda' },
     { href: '/galeri', label: 'Galeri' },
-    { href: '/koleksiyonlar', label: 'Koleksiyonlar' },
+    { href: '/koleksiyonlar', label: 'Ürünlerimiz' },
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
   ]
 
@@ -344,10 +344,10 @@ export default function AboutPage() {
   const ctaTitle = normalizeText(ctaSection?.title, 'Hikayemizin bir parçası olun')
   const ctaDescription = normalizeText(
     ctaSection?.content,
-    'Showroom’umuzu ziyaret edin, koleksiyonumuzu keşfedin ve yaşam alanınızı dönüştürmeye başlayın.'
+    'Showroom’umuzu ziyaret edin, ürünlerimizi keşfedin ve yaşam alanınızı dönüştürmeye başlayın.'
   )
   const ctaLink = sanitizeUrl(ctaSection?.link) || '/koleksiyonlar'
-  const ctaLinkText = normalizeText(ctaSection?.linkText, 'Koleksiyonları Gör')
+  const ctaLinkText = normalizeText(ctaSection?.linkText, 'Ürünlerimizi Gör')
 
   if (loading && !managedPage) {
     return (
@@ -783,7 +783,7 @@ function Footer() {
               </li>
               <li>
                 <Link href="/koleksiyonlar" className="text-background/70 hover:text-background text-sm transition-colors">
-                  Koleksiyonlar
+                  Ürünlerimiz
                 </Link>
               </li>
               <li>
@@ -818,7 +818,7 @@ function Footer() {
           <div>
             <h3 className="font-medium mb-4">Bülten</h3>
             <p className="text-background/70 text-sm mb-4">
-              Yeni koleksiyonlar ve özel tekliflerden haberdar olun.
+              Yeni ürünlerimiz ve özel tekliflerden haberdar olun.
             </p>
             <form onSubmit={handleNewsletterSubmit} className="space-y-3">
               <input

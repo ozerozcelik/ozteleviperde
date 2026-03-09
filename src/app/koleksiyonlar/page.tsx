@@ -30,7 +30,7 @@ interface Collection {
 const fallbackCollections: Collection[] = [
   {
     id: '1',
-    name: 'Aira Koleksiyonu',
+    name: 'Aira Serisi',
     slug: 'aira',
     description: 'Işık süzen keten perdeler ve zarif drapeler. Belçika keteninden üretilen bu koleksiyon, doğal ışığı yaşam alanlarınıza taşıyor.',
     image: '/images/hero.png',
@@ -85,7 +85,7 @@ const fallbackCollections: Collection[] = [
   },
   {
     id: '6',
-    name: 'Yuki Kış Koleksiyonu',
+    name: 'Yuki Kış Serisi',
     slug: 'yuki',
     description: 'Soğuk kış günleri için tasarlanmış kalın, izole perdeler ve sıcak tekstiller. Enerji tasarrufu ve konfor bir arada.',
     image: '/images/hero.png',
@@ -158,7 +158,7 @@ function parseManagedCollectionItem(item: string | undefined, fallbackImage: str
     }
   }
 
-  const resolvedName = name || `Koleksiyon ${index + 1}`
+  const resolvedName = name || `Ürün ${index + 1}`
 
   return {
     id: `managed-${index}`,
@@ -246,7 +246,7 @@ export default function CollectionsPage() {
   const navLinks = [
     { href: '/hakkimizda', label: 'Hakkımızda' },
     { href: '/galeri', label: 'Galeri' },
-    { href: '/koleksiyonlar', label: 'Koleksiyonlar' },
+    { href: '/koleksiyonlar', label: 'Ürünlerimiz' },
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
   ]
 
@@ -257,8 +257,8 @@ export default function CollectionsPage() {
   const heroSubtitle =
     managedPage?.heroSubtitle ||
     'Her koleksiyonumuz, yaşam alanlarınıza huzur ve zarafet katmak için özenle tasarlanmıştır. Japandi estetiğinin en güzel örneklerini keşfedin.'
-  const featuredTitle = featuredSection?.title || 'Seçkin koleksiyonlar'
-  const allTitle = allSection?.title || 'Diğer koleksiyonlar'
+  const featuredTitle = featuredSection?.title || 'Öne çıkan ürünlerimiz'
+  const allTitle = allSection?.title || 'Diğer ürünlerimiz'
   const ctaTitle = ctaSection?.title || 'Özel tasarım mı arıyorsunuz?'
   const ctaContent =
     ctaSection?.content ||
@@ -376,7 +376,7 @@ export default function CollectionsPage() {
 
           <div className="max-w-4xl mx-auto px-6 text-center relative">
             <p className="text-sm tracking-[0.3em] uppercase text-muted-foreground mb-6">
-              Koleksiyonlar
+              Ürünlerimiz
             </p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-foreground leading-tight mb-6">
               {heroTitle}
@@ -447,7 +447,7 @@ export default function CollectionsPage() {
           <section className="py-24 bg-background">
             <div className="max-w-md mx-auto px-6 text-center">
               <p className="text-muted-foreground">
-                Henüz koleksiyon bulunmuyor.
+                Henüz ürün bulunmuyor.
               </p>
               <Link
                 href="/galeri"
@@ -607,7 +607,7 @@ function Footer() {
               </li>
               <li>
                 <Link href="/koleksiyonlar" className="text-background/70 hover:text-background text-sm transition-colors">
-                  Koleksiyonlar
+                  Ürünlerimiz
                 </Link>
               </li>
               <li>
@@ -642,7 +642,7 @@ function Footer() {
           <div>
             <h3 className="font-medium mb-4">Bülten</h3>
             <p className="text-background/70 text-sm mb-4">
-              Yeni koleksiyonlar ve özel tekliflerden haberdar olun.
+              Yeni ürünlerimiz ve özel tekliflerden haberdar olun.
             </p>
             <form onSubmit={handleNewsletterSubmit} className="space-y-3">
               <input

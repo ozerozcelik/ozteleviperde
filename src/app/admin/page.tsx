@@ -1255,11 +1255,11 @@ export default function AdminPage() {
         resetCollectionForm()
         fetchCollections()
       } else {
-        alert(data.error || 'Koleksiyon eklenirken bir hata oluştu.')
+        alert(data.error || 'Ürün kartı eklenirken bir hata oluştu.')
       }
     } catch (error) {
       console.error('Error creating collection:', error)
-      alert('Koleksiyon eklenirken bir hata oluştu.')
+      alert('Ürün kartı eklenirken bir hata oluştu.')
     }
   }
 
@@ -1285,11 +1285,11 @@ export default function AdminPage() {
         resetCollectionForm()
         fetchCollections()
       } else {
-        alert(data.error || 'Koleksiyon güncellenirken bir hata oluştu.')
+        alert(data.error || 'Ürün kartı güncellenirken bir hata oluştu.')
       }
     } catch (error) {
       console.error('Error updating collection:', error)
-      alert('Koleksiyon güncellenirken bir hata oluştu.')
+      alert('Ürün kartı güncellenirken bir hata oluştu.')
     }
   }
 
@@ -1303,11 +1303,11 @@ export default function AdminPage() {
         setCollectionToDelete(null)
         fetchCollections()
       } else {
-        alert(data.error || 'Koleksiyon silinirken bir hata oluştu.')
+        alert(data.error || 'Ürün kartı silinirken bir hata oluştu.')
       }
     } catch (error) {
       console.error('Error deleting collection:', error)
-      alert('Koleksiyon silinirken bir hata oluştu.')
+      alert('Ürün kartı silinirken bir hata oluştu.')
     }
   }
 
@@ -2089,14 +2089,14 @@ export default function AdminPage() {
             <CardContent className="pt-6">
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold">Koleksiyonlar</h2>
+                  <h2 className="text-xl font-semibold">Ürünlerimiz</h2>
                   <p className="mt-1 text-sm text-stone-500">
-                    Koleksiyonlar sayfasındaki kartları buradan yönetin. İsim ve görsel eklemek yeterli.
+                    Ürünlerimiz sayfasındaki kartları buradan yönetin. İsim ve görsel eklemek yeterli.
                   </p>
                 </div>
                 <Button onClick={() => { resetCollectionForm(); setCollectionDialogOpen(true) }}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Yeni Koleksiyon
+                  Yeni Ürün Kartı
                 </Button>
               </div>
 
@@ -3831,16 +3831,16 @@ export default function AdminPage() {
       <Dialog open={collectionDialogOpen} onOpenChange={setCollectionDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingCollection ? 'Koleksiyon Düzenle' : 'Yeni Koleksiyon Ekle'}</DialogTitle>
+            <DialogTitle>{editingCollection ? 'Ürün Kartını Düzenle' : 'Yeni Ürün Kartı Ekle'}</DialogTitle>
             <DialogDescription>
-              Koleksiyon kartı için isim ve görsel yeterlidir. Açıklama, öne çıkarma ve sıralama isteğe bağlıdır.
+              Ürün kartı için isim ve görsel yeterlidir. Açıklama, öne çıkarma ve sıralama isteğe bağlıdır.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5 py-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Koleksiyon Adı *</Label>
+                <Label>Ürün Adı *</Label>
                 <Input
                   value={collectionForm.name}
                   onChange={(e) => {
@@ -3889,7 +3889,7 @@ export default function AdminPage() {
                   onChange={(e) => updateCollectionField('featured', e.target.checked)}
                   className="h-4 w-4"
                 />
-                Öne çıkan koleksiyon
+                Öne çıkan ürün
               </label>
             </div>
 
@@ -3980,7 +3980,7 @@ export default function AdminPage() {
       <Dialog open={deleteCollectionDialogOpen} onOpenChange={setDeleteCollectionDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Koleksiyonu Sil</DialogTitle>
+            <DialogTitle>Ürün Kartını Sil</DialogTitle>
             <DialogDescription>
               &quot;{collectionToDelete?.name}&quot; koleksiyonunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
             </DialogDescription>

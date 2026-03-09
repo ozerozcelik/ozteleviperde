@@ -531,7 +531,7 @@ function Footer() {
           <div>
             <h4 className="text-sm tracking-wider uppercase mb-4">Bülten</h4>
             <p className="text-background/70 text-sm mb-4">
-              Yeni koleksiyonlar ve özel tekliflerden haberdar olun.
+              Yeni ürünlerimiz ve özel tekliflerden haberdar olun.
             </p>
             <form onSubmit={handleSubscribe} className="flex flex-col gap-3">
               <input

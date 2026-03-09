@@ -77,7 +77,7 @@ export default function FavoritesPage() {
   const navLinks = [
     { href: '/', label: 'Ana Sayfa' },
     { href: '/#felsefe', label: 'Felsefemiz' },
-    { href: '/#koleksiyon', label: 'Koleksiyon' },
+    { href: '/#koleksiyon', label: 'Ürünlerimiz' },
     { href: '/galeri', label: 'Galeri' },
   ]
 
@@ -401,7 +401,7 @@ function Footer() {
               </li>
               <li>
                 <a href="/#koleksiyon" className="text-background/70 hover:text-background transition-colors duration-300">
-                  Koleksiyon
+                  Ürünlerimiz
                 </a>
               </li>
               <li>
@@ -453,7 +453,7 @@ function Footer() {
               Bültenimize Abone Olun
             </h4>
             <p className="text-background/70 text-sm mb-6">
-              Yeni koleksiyonlar ve özel tekliflerden ilk siz haberdar olun.
+              Yeni ürünlerimiz ve özel tekliflerden ilk siz haberdar olun.
             </p>
             <form onSubmit={handleNewsletterSubmit} className="flex gap-3">
               <input

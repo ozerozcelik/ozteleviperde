@@ -211,7 +211,7 @@ function GirisPageContent() {
           </h2>
           <p className="text-lg text-muted-foreground max-w-md">
             ÖzTelevi ailesine katılın ve yaşam alanlarınıza huzur getiren 
-            özel koleksiyonlardan haberdar olun.
+            özel ürünlerimizden haberdar olun.
           </p>
         </div>
       </div>

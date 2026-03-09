@@ -170,7 +170,7 @@ export default function CartPage() {
                 Sepetiniz boş
               </h2>
               <p className="text-muted-foreground mb-6 max-w-md">
-                Sepetinizde henüz ürün bulunmuyor. Koleksiyonumuzu keşfederek
+                Sepetinizde henüz ürün bulunmuyor. Ürünlerimizi keşfederek
                 beğendiğiniz ürünleri sepete ekleyebilirsiniz.
               </p>
               <Link
