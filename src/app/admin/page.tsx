@@ -66,6 +66,13 @@ import type {
 import { MANAGED_PAGE_SLUGS } from '@/lib/content-pages'
 import { getPageEditorPreset, type PageEditorPreset } from '@/lib/page-editor-presets'
 import type { MediaStorageMode } from '@/lib/media-storage'
+import {
+  DEFAULT_PRODUCT_CATEGORIES,
+  getDefaultProductCategoryValue,
+  normalizeProductCategories,
+  parseManagedProductCategories,
+  upsertProductCategoriesSection,
+} from '@/lib/product-categories'
 
 // ============================================
 // Types
@@ -381,7 +388,7 @@ function buildEditorState(page: ContentPage, baseline: PageEditorPreset | null) 
       }
 
       const resolvedItems =
-        Array.isArray(matchedSection?.items) && matchedSection.items.length > 0
+        Array.isArray(matchedSection?.items)
           ? [...matchedSection.items]
           : Array.isArray(baselineSection.items)
             ? [...baselineSection.items]
@@ -547,6 +554,17 @@ export default function AdminPage() {
   const [quotes, setQuotes] = useState<QuoteRequest[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
+  const [productCategories, setProductCategories] = useState<string[]>(DEFAULT_PRODUCT_CATEGORIES)
+  const [newProductCategory, setNewProductCategory] = useState('')
+  const [isLoadingProductCategories, setIsLoadingProductCategories] = useState(false)
+  const [isSavingProductCategories, setIsSavingProductCategories] = useState(false)
+  const [productCategoriesError, setProductCategoriesError] = useState('')
+  const [isProductCategoriesDirty, setIsProductCategoriesDirty] = useState(false)
+  const [productCategoriesPageState, setProductCategoriesPageState] = useState<{
+    page: ContentPage
+    form: typeof EMPTY_PAGE_FORM
+    sections: PageSection[]
+  } | null>(null)
   const [pages, setPages] = useState<ContentPage[]>([])
   const [pagesError, setPagesError] = useState('')
   const [pageDetailError, setPageDetailError] = useState('')
@@ -575,7 +593,7 @@ export default function AdminPage() {
     price: '',
     comparePrice: '',
     currency: 'TRY',
-    category: 'perdeler',
+    category: DEFAULT_PRODUCT_CATEGORIES[0],
     image: '',
     images: [] as string[],
     features: [] as string[],
@@ -664,6 +682,77 @@ export default function AdminPage() {
       if (data.success) setProducts(data.data)
     } catch (error) {
       console.error('Error fetching products:', error)
+    }
+  }, [])
+
+  const fetchProductCategoriesConfig = useCallback(async () => {
+    setIsLoadingProductCategories(true)
+
+    try {
+      setProductCategoriesError('')
+      const res = await fetch('/api/admin/pages/site-ayarlari')
+      const data = await res.json()
+
+      if (data.success) {
+        const page: ContentPage = data.data.page
+        const baseline: PageEditorPreset | null = data.data.baseline || null
+        const resolvedState = buildEditorState(page, baseline)
+
+        setProductCategories(
+          parseManagedProductCategories(resolvedState.sections, { fallbackToDefaults: true })
+        )
+        setProductCategoriesPageState({
+          page,
+          form: resolvedState.form,
+          sections: resolvedState.sections,
+        })
+        setIsProductCategoriesDirty(false)
+      } else {
+        const baseline = getPageEditorPreset('site-ayarlari')
+        const fallbackPage = buildManagedPageFallback(
+          'site-ayarlari',
+          baseline?.title ||
+            MANAGED_PAGE_SLUGS.find((page) => page.slug === 'site-ayarlari')?.title ||
+            'Genel Site Ayarlari'
+        )
+        const resolvedState = buildEditorState(fallbackPage, baseline)
+
+        setProductCategories(
+          parseManagedProductCategories(resolvedState.sections, { fallbackToDefaults: true })
+        )
+        setProductCategoriesPageState({
+          page: fallbackPage,
+          form: resolvedState.form,
+          sections: resolvedState.sections,
+        })
+        setIsProductCategoriesDirty(false)
+        setProductCategoriesError(
+          data.error || 'Kategori ayarlari yuklenemedi. Referans liste gosteriliyor.'
+        )
+      }
+    } catch (error) {
+      console.error('Error fetching product categories config:', error)
+      const baseline = getPageEditorPreset('site-ayarlari')
+      const fallbackPage = buildManagedPageFallback(
+        'site-ayarlari',
+        baseline?.title ||
+          MANAGED_PAGE_SLUGS.find((page) => page.slug === 'site-ayarlari')?.title ||
+          'Genel Site Ayarlari'
+      )
+      const resolvedState = buildEditorState(fallbackPage, baseline)
+
+      setProductCategories(
+        parseManagedProductCategories(resolvedState.sections, { fallbackToDefaults: true })
+      )
+      setProductCategoriesPageState({
+        page: fallbackPage,
+        form: resolvedState.form,
+        sections: resolvedState.sections,
+      })
+      setIsProductCategoriesDirty(false)
+      setProductCategoriesError('Kategori ayarlari yuklenemedi. Referans liste gosteriliyor.')
+    } finally {
+      setIsLoadingProductCategories(false)
     }
   }, [])
 
@@ -914,13 +1003,14 @@ export default function AdminPage() {
       fetchContacts(),
       fetchNewsletters(),
       fetchProducts(),
+      fetchProductCategoriesConfig(),
       fetchCollections(),
       fetchQuotes(),
       fetchOrders(),
       fetchPages(),
     ])
     setIsLoading(false)
-  }, [fetchCollections, fetchDashboardStats, fetchContacts, fetchNewsletters, fetchProducts, fetchQuotes, fetchOrders, fetchPages])
+  }, [fetchCollections, fetchDashboardStats, fetchContacts, fetchNewsletters, fetchProductCategoriesConfig, fetchProducts, fetchQuotes, fetchOrders, fetchPages])
 
   useEffect(() => {
     if (isAuthenticated && !hasFetchedRef.current) {
@@ -1308,7 +1398,7 @@ export default function AdminPage() {
       price: '',
       comparePrice: '',
       currency: 'TRY',
-      category: 'perdeler',
+      category: getDefaultProductCategoryValue(categorySuggestions),
       image: '',
       images: [],
       features: [],
@@ -1533,13 +1623,135 @@ export default function AdminPage() {
     return <Badge variant="outline">{categoryMap[category] || category}</Badge>
   }
 
-  const categorySuggestions = Array.from(
-    new Set(
-      ['perdeler', 'tekstiller', 'yatak-odasi', 'aksesuarlar', ...products.map((product) => product.category)]
-        .map((category) => category.trim())
-        .filter(Boolean)
-    )
-  ).sort((a, b) => a.localeCompare(b, 'tr'))
+  const categoryUsageCounts = products.reduce<Record<string, number>>((acc, product) => {
+    const normalizedCategory = product.category.trim()
+    if (!normalizedCategory) return acc
+
+    acc[normalizedCategory] = (acc[normalizedCategory] || 0) + 1
+    return acc
+  }, {})
+
+  const categorySuggestionsSource = productCategoriesPageState
+    ? productCategories
+    : products.map((product) => product.category)
+
+  const categorySuggestions = normalizeProductCategories(categorySuggestionsSource).sort((a, b) =>
+    a.localeCompare(b, 'tr')
+  )
+
+  const addProductCategory = () => {
+    const normalizedCategory = newProductCategory.trim()
+    if (!normalizedCategory) return
+
+    setProductCategories((prev) => normalizeProductCategories([...prev, normalizedCategory]))
+    setNewProductCategory('')
+    setIsProductCategoriesDirty(true)
+  }
+
+  const updateProductCategory = (index: number, value: string) => {
+    setProductCategories((prev) => {
+      const next = [...prev]
+      next[index] = value
+      return next
+    })
+    setIsProductCategoriesDirty(true)
+  }
+
+  const removeProductCategory = (index: number) => {
+    setProductCategories((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+    setIsProductCategoriesDirty(true)
+  }
+
+  const moveProductCategory = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= productCategories.length || fromIndex === toIndex) return
+
+    setProductCategories((prev) => {
+      const next = [...prev]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+    setIsProductCategoriesDirty(true)
+  }
+
+  const saveProductCategories = async () => {
+    setIsSavingProductCategories(true)
+
+    try {
+      const detailRes = await fetch('/api/admin/pages/site-ayarlari')
+      const detailData = await detailRes.json()
+
+      let latestPage: ContentPage
+      let latestForm: typeof EMPTY_PAGE_FORM
+      let latestSections: PageSection[]
+
+      if (detailData.success) {
+        const latestState = buildEditorState(detailData.data.page, detailData.data.baseline || null)
+        latestPage = detailData.data.page
+        latestForm = latestState.form
+        latestSections = latestState.sections
+      } else if (productCategoriesPageState) {
+        latestPage = productCategoriesPageState.page
+        latestForm = productCategoriesPageState.form
+        latestSections = productCategoriesPageState.sections
+      } else {
+        alert('Kategori ayarlari yuklenemedi. Lutfen sayfayi yenileyip tekrar deneyin.')
+        return
+      }
+
+      const nextSections = upsertProductCategoriesSection(
+        latestSections,
+        productCategories
+      ) as PageSection[]
+      const res = await fetch('/api/admin/pages/site-ayarlari', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...latestForm,
+          sections: JSON.stringify(nextSections),
+          status: latestPage.status,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!data.success) {
+        alert(data.error || 'Kategoriler kaydedilirken bir hata olustu.')
+        return
+      }
+
+      const normalizedCategories = parseManagedProductCategories(nextSections, {
+        fallbackToDefaults: false,
+      })
+
+      setProductCategories(normalizedCategories)
+      setProductCategoriesPageState((prev) =>
+        prev || productCategoriesPageState
+          ? {
+              page: {
+                ...(prev || productCategoriesPageState)!.page,
+                ...data.data,
+                status: latestPage.status,
+              },
+              form: latestForm,
+              sections: nextSections,
+            }
+          : null
+      )
+      setIsProductCategoriesDirty(false)
+      setProductCategoriesError('')
+      await fetchPages()
+
+      if (selectedPageSlug === 'site-ayarlari' && activeTab === 'pages') {
+        await fetchPageDetail('site-ayarlari')
+      }
+    } catch (error) {
+      console.error('Error saving product categories:', error)
+      alert('Kategoriler kaydedilirken bir hata olustu.')
+    } finally {
+      setIsSavingProductCategories(false)
+    }
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount)
@@ -1650,6 +1862,13 @@ export default function AdminPage() {
             }`}>
             <Package className="w-4 h-4" />
             Ürünler
+          </button>
+          <button onClick={() => setActiveTab('product-categories')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeTab === 'product-categories' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+            }`}>
+            <Package className="w-4 h-4" />
+            Kategoriler
           </button>
           <button onClick={() => setActiveTab('orders')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
@@ -2035,6 +2254,135 @@ export default function AdminPage() {
                   )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === 'product-categories' && (
+          <Card>
+            <CardContent className="pt-6 space-y-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold">Ürün Kategorileri</h2>
+                  <p className="text-sm text-stone-500">
+                    Ürün formundaki kategori önerileri bu listeden gelir. Kategori kaldırmak mevcut
+                    ürünleri silmez; sadece öneri listesinden çıkarır.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void fetchProductCategoriesConfig()}
+                    disabled={isLoadingProductCategories || isSavingProductCategories}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Yenile
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void saveProductCategories()}
+                    disabled={isLoadingProductCategories || isSavingProductCategories || !isProductCategoriesDirty}
+                  >
+                    {isSavingProductCategories ? 'Kaydediliyor...' : 'Kategorileri Kaydet'}
+                  </Button>
+                </div>
+              </div>
+
+              {productCategoriesError && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  {productCategoriesError}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+                Bu alan sadece kategori havuzunu yonetir. Urunu belirli bir kategoriye atamak icin
+                yine <strong>Ürünler</strong> sekmesinden ilgili urunu duzenle.
+              </div>
+
+              <div className="flex flex-col gap-2 rounded-xl border border-dashed border-stone-300 p-4 md:flex-row">
+                <Input
+                  value={newProductCategory}
+                  onChange={(e) => setNewProductCategory(e.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      addProductCategory()
+                    }
+                  }}
+                  placeholder="Yeni kategori adi yazin"
+                />
+                <Button type="button" onClick={addProductCategory}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Kategori Ekle
+                </Button>
+              </div>
+
+              {isProductCategoriesDirty && (
+                <Badge variant="secondary">Kaydedilmemis kategori degisikligi var</Badge>
+              )}
+
+              {isLoadingProductCategories ? (
+                <div className="rounded-lg border border-dashed border-stone-300 px-4 py-10 text-center text-sm text-stone-500">
+                  Kategori ayarlari yukleniyor...
+                </div>
+              ) : productCategories.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-stone-300 px-4 py-10 text-center text-sm text-stone-500">
+                  Henuz kategori yok. Yukaridan yeni kategori ekleyebilirsin.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {productCategories.map((category, index) => (
+                    <div
+                      key={`product-category-${index}`}
+                      className="rounded-xl border border-stone-200 bg-white p-4"
+                    >
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                        <div className="flex-1 space-y-2">
+                          <Label>{`Kategori ${index + 1}`}</Label>
+                          <Input
+                            value={category}
+                            onChange={(e) => updateProductCategory(index, e.target.value)}
+                            placeholder="Kategori adi"
+                          />
+                        </div>
+                        <div className="min-w-40 text-sm text-stone-500">
+                          {categoryUsageCounts[category.trim()] || 0} urun kullaniyor
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => moveProductCategory(index, index - 1)}
+                            disabled={index === 0}
+                          >
+                            Yukari
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => moveProductCategory(index, index + 1)}
+                            disabled={index === productCategories.length - 1}
+                          >
+                            Asagi
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => removeProductCategory(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

@@ -93,6 +93,14 @@ const PAGE_EDITOR_PRESETS: Record<string, PageEditorPreset> = {
           'Cerezler - #',
         ],
       },
+      {
+        key: 'product-categories',
+        type: 'features',
+        title: 'Urun Kategorileri',
+        content:
+          'Urun formundaki kategori onerileri bu listeden gelir. Ayrica admin icindeki Kategoriler sekmesinden yonetilir.',
+        items: ['perdeler', 'tekstiller', 'yatak-odasi', 'aksesuarlar'],
+      },
     ],
   }),
   anasayfa: createPreset({
