@@ -130,12 +130,16 @@ function parseTeamMembers(items: string[] | undefined, fallback: TeamMember[]) {
             ? fallback.find((member) => member.name === parsedItem.name)
             : undefined
           const existing = fallbackByName || fallbackByIndex
+          const hasName = Object.prototype.hasOwnProperty.call(parsedItem, 'name')
+          const hasRole = Object.prototype.hasOwnProperty.call(parsedItem, 'role')
+          const hasBio = Object.prototype.hasOwnProperty.call(parsedItem, 'bio')
+          const hasImage = Object.prototype.hasOwnProperty.call(parsedItem, 'image')
 
           return {
-            name: parsedItem.name || existing?.name || '',
-            role: parsedItem.role || existing?.role || '',
-            bio: parsedItem.bio || existing?.bio || '',
-            image: parsedItem.image || existing?.image || '/images/hero.png',
+            name: hasName ? (parsedItem.name ?? '') : (existing?.name || ''),
+            role: hasRole ? (parsedItem.role ?? '') : (existing?.role || ''),
+            bio: hasBio ? (parsedItem.bio ?? '') : (existing?.bio || ''),
+            image: hasImage ? (parsedItem.image ?? '') : (existing?.image || '/images/hero.png'),
           }
         }
       } catch {

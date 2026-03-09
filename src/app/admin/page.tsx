@@ -2806,14 +2806,17 @@ export default function AdminPage() {
                                     return (
                                       <div className="space-y-4">
                                         {teamItems.map((item: string, i: number) => {
+                                          const hasStoredItem = section.items?.[i] !== undefined
                                           const fallbackMember = parseTeamMemberItem(baselineTeamItems[i])
                                           const member = parseTeamMemberItem(item)
-                                          const resolvedMember = {
-                                            name: member.name || fallbackMember.name,
-                                            role: member.role || fallbackMember.role,
-                                            bio: member.bio || fallbackMember.bio,
-                                            image: member.image || fallbackMember.image,
-                                          }
+                                          const resolvedMember = hasStoredItem
+                                            ? member
+                                            : {
+                                                name: member.name || fallbackMember.name,
+                                                role: member.role || fallbackMember.role,
+                                                bio: member.bio || fallbackMember.bio,
+                                                image: member.image || fallbackMember.image,
+                                              }
 
                                           return (
                                             <div key={i} className="rounded-xl border border-stone-200 p-4 space-y-3">
