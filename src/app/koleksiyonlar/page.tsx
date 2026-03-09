@@ -5,7 +5,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import SocialMediaButtons from '@/components/SocialMediaButtons'
-import ManagedPage from '@/components/ManagedPage'
 import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
@@ -97,6 +96,83 @@ const fallbackCollections: Collection[] = [
   },
 ]
 
+type ManagedSection = {
+  key?: string
+  title?: string
+  content?: string
+  items?: string[]
+  link?: string
+  linkText?: string
+}
+
+function generateCollectionSlug(name: string, index: number) {
+  const normalized = name
+    .toLowerCase()
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  return normalized || `koleksiyon-${index + 1}`
+}
+
+function parseManagedSections(raw: string | null | undefined): ManagedSection[] {
+  if (!raw) return []
+
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function parseManagedCollectionItem(item: string | undefined, fallbackImage: string, index: number): Collection {
+  let name = ''
+  let description = ''
+  let image = fallbackImage
+
+  if (item) {
+    try {
+      const parsed = JSON.parse(item) as {
+        title?: unknown
+        description?: unknown
+        image?: unknown
+      }
+
+      if (parsed && typeof parsed === 'object') {
+        name = typeof parsed.title === 'string' ? parsed.title : ''
+        description = typeof parsed.description === 'string' ? parsed.description : ''
+        image = typeof parsed.image === 'string' && parsed.image.trim().length > 0
+          ? parsed.image
+          : fallbackImage
+      }
+    } catch {
+      const [rawName, ...rest] = item.split(' - ')
+      name = rawName.trim()
+      description = rest.join(' - ').trim()
+    }
+  }
+
+  const resolvedName = name || `Koleksiyon ${index + 1}`
+
+  return {
+    id: `managed-${index}`,
+    name: resolvedName,
+    slug: generateCollectionSlug(resolvedName, index),
+    description: description || null,
+    image: image || null,
+    featured: false,
+    order: index,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
 // ============================================
 // Collections Page Component
 // ============================================
@@ -142,6 +218,31 @@ export default function CollectionsPage() {
     fetchCollections()
   }, [])
 
+  const managedSections = parseManagedSections(managedPage?.sections)
+  const featuredSection = managedSections.find((section) => section.key === 'collections-featured')
+  const allSection = managedSections.find((section) => section.key === 'collections-all')
+  const gallerySection = managedSections.find((section) => section.key === 'collections-gallery')
+  const ctaSection = managedSections.find((section) => section.key === 'collections-cta')
+  const galleryImages = gallerySection?.items || []
+
+  const managedFeaturedCollections = (featuredSection?.items || []).map((item, index) => ({
+    ...parseManagedCollectionItem(item, galleryImages[index] || '', index),
+    featured: true,
+    order: index,
+  }))
+
+  const managedOtherCollections = (allSection?.items || []).map((item, index) => ({
+    ...parseManagedCollectionItem(
+      item,
+      galleryImages[managedFeaturedCollections.length + index] || '',
+      managedFeaturedCollections.length + index
+    ),
+    featured: false,
+    order: managedFeaturedCollections.length + index,
+  }))
+
+  const managedCollections = [...managedFeaturedCollections, ...managedOtherCollections]
+
   const navLinks = [
     { href: '/hakkimizda', label: 'Hakkımızda' },
     { href: '/galeri', label: 'Galeri' },
@@ -149,24 +250,24 @@ export default function CollectionsPage() {
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
   ]
 
-  const featuredCollections = collections.filter((c) => c.featured)
-  const otherCollections = collections.filter((c) => !c.featured)
+  const displayCollections = managedCollections.length > 0 ? managedCollections : collections
+  const featuredCollections = displayCollections.filter((c) => c.featured)
+  const otherCollections = displayCollections.filter((c) => !c.featured)
+  const heroTitle = managedPage?.heroTitle || 'Zamansız tasarımlar'
+  const heroSubtitle =
+    managedPage?.heroSubtitle ||
+    'Her koleksiyonumuz, yaşam alanlarınıza huzur ve zarafet katmak için özenle tasarlanmıştır. Japandi estetiğinin en güzel örneklerini keşfedin.'
+  const featuredTitle = featuredSection?.title || 'Seçkin koleksiyonlar'
+  const allTitle = allSection?.title || 'Diğer koleksiyonlar'
+  const ctaTitle = ctaSection?.title || 'Özel tasarım mı arıyorsunuz?'
+  const ctaContent =
+    ctaSection?.content ||
+    'Özel ölçü ve tasarım talepleriniz için uzman ekibimizle görüşün. Size özel çözümler üretelim.'
+  const ctaLink = ctaSection?.link || '/#iletisim'
+  const ctaText = ctaSection?.linkText || 'Teklif Alın'
 
-  if (loading && !managedPage) {
+  if (loading && !managedPage && isLoading) {
     return <ManagedPageLoading />
-  }
-
-  if (managedPage?.htmlContent || managedPage?.heroTitle) {
-    return <ManagedPage 
-      html={managedPage.htmlContent} 
-      schemaJson={managedPage.schemaJson}
-      heroTitle={managedPage.heroTitle}
-      heroSubtitle={managedPage.heroSubtitle}
-      heroImage={managedPage.heroImage}
-      heroCtaText={managedPage.heroCtaText}
-      heroCtaLink={managedPage.heroCtaLink}
-      sections={managedPage.sections}
-    />
   }
 
   return (
@@ -278,17 +379,16 @@ export default function CollectionsPage() {
               Koleksiyonlar
             </p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-foreground leading-tight mb-6">
-              Zamansız <span className="font-normal italic">tasarımlar</span>
+              {heroTitle}
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Her koleksiyonumuz, yaşam alanlarınıza huzur ve zarafet katmak için
-              özenle tasarlanmıştır. Japandi estetiğinin en güzel örneklerini keşfedin.
+              {heroSubtitle}
             </p>
           </div>
         </section>
 
         {/* Loading State */}
-        {isLoading && (
+        {isLoading && managedCollections.length === 0 && (
           <section className="py-24">
             <div className="flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
@@ -306,7 +406,7 @@ export default function CollectionsPage() {
                     Öne Çıkan
                   </p>
                   <h2 className="text-2xl sm:text-3xl font-light text-foreground">
-                    Seçkin <span className="font-normal italic">koleksiyonlar</span>
+                    {featuredTitle}
                   </h2>
                 </div>
               </div>
@@ -329,7 +429,7 @@ export default function CollectionsPage() {
                   Tümü
                 </p>
                 <h2 className="text-2xl sm:text-3xl font-light text-foreground">
-                  Diğer <span className="font-normal italic">koleksiyonlar</span>
+                  {allTitle}
                 </h2>
               </div>
 
@@ -343,7 +443,7 @@ export default function CollectionsPage() {
         )}
 
         {/* Empty State */}
-        {!isLoading && collections.length === 0 && (
+        {!isLoading && displayCollections.length === 0 && (
           <section className="py-24 bg-background">
             <div className="max-w-md mx-auto px-6 text-center">
               <p className="text-muted-foreground">
@@ -363,18 +463,17 @@ export default function CollectionsPage() {
         <section className="py-24 md:py-32 bg-foreground">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h2 className="text-2xl md:text-3xl font-light text-background mb-4">
-              Özel tasarım mı <span className="font-normal italic">arıyorsunuz?</span>
+              {ctaTitle}
             </h2>
             <p className="text-background/80 mb-8 max-w-xl mx-auto">
-              Özel ölçü ve tasarım talepleriniz için uzman ekibimizle görüşün.
-              Size özel çözümler üretelim.
+              {ctaContent}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
-                href="/#iletisim"
+                href={ctaLink}
                 className="px-8 py-4 bg-background text-foreground text-sm tracking-wide rounded-full transition-all duration-500 hover:bg-background/90 hover:shadow-lg"
               >
-                Teklif Alın
+                {ctaText}
               </a>
               <a
                 href={contact.phoneHref}

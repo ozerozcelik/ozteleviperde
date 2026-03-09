@@ -236,6 +236,55 @@ function formatFeatureItem(title: string, description: string) {
   return `${title} - ${description}`
 }
 
+function parseCollectionEditorItem(
+  item: string | undefined,
+  fallbackTitle = '',
+  fallbackDescription = '',
+  fallbackImage = ''
+) {
+  if (item) {
+    try {
+      const parsed = JSON.parse(item) as {
+        title?: unknown
+        description?: unknown
+        image?: unknown
+      }
+
+      if (parsed && typeof parsed === 'object') {
+        return {
+          title: typeof parsed.title === 'string' ? parsed.title : fallbackTitle,
+          description:
+            typeof parsed.description === 'string'
+              ? parsed.description
+              : fallbackDescription,
+          image: typeof parsed.image === 'string' ? parsed.image : fallbackImage,
+        }
+      }
+    } catch {
+      const feature = parseFeatureItem(item, fallbackTitle)
+      return {
+        title: feature.title || fallbackTitle,
+        description: feature.description || fallbackDescription,
+        image: fallbackImage,
+      }
+    }
+  }
+
+  return {
+    title: fallbackTitle,
+    description: fallbackDescription,
+    image: fallbackImage,
+  }
+}
+
+function formatCollectionEditorItem(title: string, description: string, image: string) {
+  return JSON.stringify({
+    title: title.trim(),
+    description: description.trim(),
+    image: image.trim(),
+  })
+}
+
 function parseFaqEditorItem(
   item: string | undefined,
   fallbackQuestion = '',
@@ -1647,13 +1696,6 @@ export default function AdminPage() {
             <Package className="w-4 h-4" />
             Ürünler
           </button>
-          <button onClick={() => setActiveTab('collections')}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
-              activeTab === 'collections' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
-            }`}>
-            <ImageIcon className="w-4 h-4" />
-            Koleksiyonlar
-          </button>
           <button onClick={() => setActiveTab('orders')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
               activeTab === 'orders' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
@@ -2393,13 +2435,6 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {selectedPageSlug === 'koleksiyonlar' && (
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-                    Koleksiyon kartlarındaki isim, görsel ve kısa açıklamalar artık sol menüdeki <strong>Koleksiyonlar</strong> sekmesinden yönetilir.
-                    Bu ekranda yalnızca sayfanın hero ve genel metin alanlarını düzenlemelisin.
-                  </div>
-                )}
-
                 {pageBaseline && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 space-y-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -3022,7 +3057,160 @@ export default function AdminPage() {
                                     setSectionsWithHistory(newSections)
                                   }}
                                 />
-                                {section.key === 'about-story' ? (
+                                {section.key === 'collections-featured' || section.key === 'collections-all' ? (
+                                  (() => {
+                                    const baselineSection =
+                                      pageBaseline?.sections.find((entry) => entry.key === section.key)
+                                    const baselineItems = baselineSection?.items || []
+                                    const collectionItems = Array.from(
+                                      {
+                                        length: Math.max(1, baselineItems.length, section.items?.length || 0),
+                                      },
+                                      (_, itemIndex) =>
+                                        parseCollectionEditorItem(
+                                          section.items?.[itemIndex],
+                                          parseCollectionEditorItem(baselineItems[itemIndex]).title,
+                                          parseCollectionEditorItem(baselineItems[itemIndex]).description,
+                                          parseCollectionEditorItem(baselineItems[itemIndex]).image
+                                        )
+                                    )
+
+                                    return (
+                                      <div className="space-y-4">
+                                        {collectionItems.map((item, itemIndex) => (
+                                          <div key={itemIndex} className="rounded-xl border border-stone-200 p-4 space-y-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                              <Label>{`Ürün ${itemIndex + 1}`}</Label>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  const newSections = [...pageSections]
+                                                  newSections[index].items = collectionItems
+                                                    .filter((_, entryIndex) => entryIndex !== itemIndex)
+                                                    .map((entry) =>
+                                                      formatCollectionEditorItem(
+                                                        entry.title,
+                                                        entry.description,
+                                                        entry.image
+                                                      )
+                                                    )
+                                                  setSectionsWithHistory(newSections)
+                                                }}
+                                              >
+                                                Kaldır
+                                              </Button>
+                                            </div>
+                                            <Input
+                                              placeholder="Ürün adı"
+                                              value={item.title}
+                                              onChange={(e) => {
+                                                const newSections = [...pageSections]
+                                                const nextItems = [...collectionItems]
+                                                nextItems[itemIndex] = {
+                                                  ...item,
+                                                  title: e.target.value,
+                                                }
+                                                newSections[index].items = nextItems.map((entry) =>
+                                                  formatCollectionEditorItem(entry.title, entry.description, entry.image)
+                                                )
+                                                setSectionsWithHistory(newSections)
+                                              }}
+                                            />
+                                            <Textarea
+                                              rows={3}
+                                              placeholder="Kısa açıklama"
+                                              value={item.description}
+                                              onChange={(e) => {
+                                                const newSections = [...pageSections]
+                                                const nextItems = [...collectionItems]
+                                                nextItems[itemIndex] = {
+                                                  ...item,
+                                                  description: e.target.value,
+                                                }
+                                                newSections[index].items = nextItems.map((entry) =>
+                                                  formatCollectionEditorItem(entry.title, entry.description, entry.image)
+                                                )
+                                                setSectionsWithHistory(newSections)
+                                              }}
+                                            />
+                                            <div className="flex gap-2">
+                                              <Input
+                                                placeholder="Görsel URL"
+                                                value={item.image}
+                                                onChange={(e) => {
+                                                  const newSections = [...pageSections]
+                                                  const nextItems = [...collectionItems]
+                                                  nextItems[itemIndex] = {
+                                                    ...item,
+                                                    image: e.target.value,
+                                                  }
+                                                  newSections[index].items = nextItems.map((entry) =>
+                                                    formatCollectionEditorItem(entry.title, entry.description, entry.image)
+                                                  )
+                                                  setSectionsWithHistory(newSections)
+                                                }}
+                                              />
+                                              <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-2 rounded flex items-center">
+                                                <Upload className="w-4 h-4" />
+                                                <input
+                                                  type="file"
+                                                  accept="image/*"
+                                                  className="hidden"
+                                                  onChange={async (e) => {
+                                                    const file = e.target.files?.[0]
+                                                    if (!file) return
+                                                    setIsUploading(true)
+                                                    try {
+                                                      const uploadedUrl = await uploadMediaAsset(file, {
+                                                        folder: `oztelevi/pages/${selectedPageSlug}`,
+                                                        tags: ['page', selectedPageSlug, section.key || 'collection-item'],
+                                                      })
+                                                      const newSections = [...pageSections]
+                                                      const nextItems = [...collectionItems]
+                                                      nextItems[itemIndex] = {
+                                                        ...item,
+                                                        image: uploadedUrl,
+                                                      }
+                                                      newSections[index].items = nextItems.map((entry) =>
+                                                        formatCollectionEditorItem(entry.title, entry.description, entry.image)
+                                                      )
+                                                      setSectionsWithHistory(newSections)
+                                                    } catch (error) {
+                                                      alert(error instanceof Error ? error.message : 'Yukleme hatasi')
+                                                    } finally {
+                                                      setIsUploading(false)
+                                                    }
+                                                  }}
+                                                  disabled={isUploading}
+                                                />
+                                              </label>
+                                            </div>
+                                            {item.image && (
+                                              <img src={item.image} alt={item.title || `Ürün ${itemIndex + 1}`} className="h-24 w-24 rounded-xl object-cover" />
+                                            )}
+                                          </div>
+                                        ))}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            const newSections = [...pageSections]
+                                            newSections[index].items = [
+                                              ...collectionItems.map((entry) =>
+                                                formatCollectionEditorItem(entry.title, entry.description, entry.image)
+                                              ),
+                                              formatCollectionEditorItem('', '', ''),
+                                            ]
+                                            setSectionsWithHistory(newSections)
+                                          }}
+                                        >
+                                          + Ürün Ekle
+                                        </Button>
+                                      </div>
+                                    )
+                                  })()
+                                ) : section.key === 'about-story' ? (
                                   (() => {
                                     const baselineStoryItems =
                                       pageBaseline?.sections.find((entry) => entry.key === 'about-story')?.items || []
