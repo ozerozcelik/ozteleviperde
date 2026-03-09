@@ -12,6 +12,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import ManagedPage from '@/components/ManagedPage'
+import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
@@ -138,7 +139,7 @@ const categoryLabels: Record<string, string> = {
 // ============================================
 export default function FAQPage() {
   const { contact, structuredData } = useSiteSettings()
-  const { content: managedPage } = usePageContent('sikca-sorulan-sorular')
+  const { content: managedPage, loading } = usePageContent('sikca-sorulan-sorular')
   const fallbackFAQs = getFallbackFAQs({
     address: contact.address,
     weekdays: structuredData.openingHours.weekdays,
@@ -213,6 +214,10 @@ export default function FAQPage() {
     { href: '/koleksiyonlar', label: 'Koleksiyonlar' },
     { href: '/sikca-sorulan-sorular', label: 'SSS' },
   ]
+
+  if (loading && !managedPage) {
+    return <ManagedPageLoading />
+  }
 
   if (managedPage?.htmlContent || managedPage?.heroTitle) {
     return <ManagedPage 

@@ -9,6 +9,7 @@ import { CartDrawer } from '@/components/CartDrawer'
 import SocialMediaButtons from '@/components/SocialMediaButtons'
 import { useCart } from '@/contexts/CartContext'
 import ManagedPage from '@/components/ManagedPage'
+import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
@@ -127,7 +128,7 @@ const categories = [
 ]
 
 export default function GalleryPage() {
-  const { content: managedPage } = usePageContent('galeri')
+  const { content: managedPage, loading } = usePageContent('galeri')
 
   const [activeFilter, setActiveFilter] = useState('all')
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null)
@@ -222,6 +223,10 @@ export default function GalleryPage() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  if (loading && !managedPage) {
+    return <ManagedPageLoading />
+  }
 
   if (managedPage?.htmlContent || managedPage?.heroTitle) {
     return <ManagedPage 

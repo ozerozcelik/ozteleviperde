@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import ManagedPage from '@/components/ManagedPage'
+import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 
 // ============================================
@@ -99,7 +100,7 @@ const curtainColors: CurtainColor[] = [
 // Component
 // ============================================
 export default function VisualizerPage() {
-  const { content: managedPage } = usePageContent('visualizer')
+  const { content: managedPage, loading } = usePageContent('visualizer')
 
   const [selectedRoom, setSelectedRoom] = useState<Room>(rooms[0])
   const [selectedStyle, setSelectedStyle] = useState<CurtainStyle>(curtainStyles[0])
@@ -131,6 +132,10 @@ export default function VisualizerPage() {
     setSavedImage('saved')
     setTimeout(() => setSavedImage(null), 3000)
     setIsSaving(false)
+  }
+
+  if (loading && !managedPage) {
+    return <ManagedPageLoading />
   }
 
   if (managedPage?.htmlContent || managedPage?.heroTitle) {

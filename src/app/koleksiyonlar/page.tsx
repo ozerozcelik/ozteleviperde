@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import SocialMediaButtons from '@/components/SocialMediaButtons'
 import ManagedPage from '@/components/ManagedPage'
+import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
@@ -101,7 +102,7 @@ const fallbackCollections: Collection[] = [
 // ============================================
 export default function CollectionsPage() {
   const { contact } = useSiteSettings()
-  const { content: managedPage } = usePageContent('koleksiyonlar')
+  const { content: managedPage, loading } = usePageContent('koleksiyonlar')
 
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -150,6 +151,10 @@ export default function CollectionsPage() {
 
   const featuredCollections = collections.filter((c) => c.featured)
   const otherCollections = collections.filter((c) => !c.featured)
+
+  if (loading && !managedPage) {
+    return <ManagedPageLoading />
+  }
 
   if (managedPage?.htmlContent || managedPage?.heroTitle) {
     return <ManagedPage 

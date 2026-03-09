@@ -11,11 +11,11 @@ import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import { CartIcon } from '@/components/CartIcon'
 import { CartDrawer } from '@/components/CartDrawer'
 import ManagedPage from '@/components/ManagedPage'
+import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 
 export default function CartPage() {
-  const { content: managedPage } = usePageContent('sepet')
-
+  const { content: managedPage, loading } = usePageContent('sepet')
   const {
     cart,
     isLoading,
@@ -37,6 +37,10 @@ export default function CartPage() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  if (loading && !managedPage) {
+    return <ManagedPageLoading />
+  }
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return

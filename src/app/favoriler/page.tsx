@@ -8,6 +8,7 @@ import { OzTeleviLogo, OzTeleviLogoLight } from '@/components/OzTeleviLogo'
 import SocialMediaButtons from '@/components/SocialMediaButtons'
 import { useFavorites } from '@/contexts/FavoritesContext'
 import ManagedPage from '@/components/ManagedPage'
+import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
@@ -48,7 +49,7 @@ const categoryLabels: Record<string, string> = {
 // Favorites Page
 // ============================================
 export default function FavoritesPage() {
-  const { content: managedPage } = usePageContent('favoriler')
+  const { content: managedPage, loading } = usePageContent('favoriler')
 
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -79,6 +80,10 @@ export default function FavoritesPage() {
     { href: '/#koleksiyon', label: 'Koleksiyon' },
     { href: '/galeri', label: 'Galeri' },
   ]
+
+  if (loading && !managedPage) {
+    return <ManagedPageLoading />
+  }
 
   if (managedPage?.htmlContent || managedPage?.heroTitle) {
     return <ManagedPage 

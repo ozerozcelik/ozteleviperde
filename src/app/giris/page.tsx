@@ -16,13 +16,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
 import ManagedPage from '@/components/ManagedPage'
+import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
 function GirisPageContent() {
-  const { content: managedPage } = usePageContent('giris')
+  const { content: managedPage, loading } = usePageContent('giris')
   const { legal, contact } = useSiteSettings()
-
   const router = useRouter()
   const searchParams = useSearchParams()
   const { status } = useSession()
@@ -69,6 +69,10 @@ function GirisPageContent() {
       setError('E-posta veya şifre hatalı')
     }
   }, [searchParams])
+
+  if (loading && !managedPage) {
+    return <ManagedPageLoading />
+  }
 
   // Handle login
   const handleLogin = async (e: React.FormEvent) => {

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { OzTeleviLogo } from '@/components/OzTeleviLogo'
 import SocialMediaButtons from '@/components/SocialMediaButtons'
 import ManagedPage from '@/components/ManagedPage'
+import ManagedPageLoading from '@/components/ManagedPageLoading'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
@@ -41,7 +42,7 @@ interface BlogResponse {
 // Blog Listing Page
 // ============================================
 export default function BlogPage() {
-  const { content: managedPage } = usePageContent('blog')
+  const { content: managedPage, loading } = usePageContent('blog')
 
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -132,6 +133,10 @@ export default function BlogPage() {
       month: 'long',
       year: 'numeric',
     })
+  }
+
+  if (loading && !managedPage) {
+    return <ManagedPageLoading />
   }
 
   if (managedPage?.htmlContent || managedPage?.heroTitle) {
