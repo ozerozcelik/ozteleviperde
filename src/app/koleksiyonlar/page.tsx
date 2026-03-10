@@ -15,77 +15,7 @@ import { type CollectionItem, parseManagedSections } from '@/lib/managed-collect
 // ============================================
 type Collection = CollectionItem
 
-// ============================================
-// Fallback Collections
-// ============================================
-const fallbackCollections: Collection[] = [
-  {
-    id: '1',
-    name: 'Aira Serisi',
-    slug: 'aira',
-    description: 'Işık süzen keten perdeler ve zarif drapeler. Belçika keteninden üretilen bu koleksiyon, doğal ışığı yaşam alanlarınıza taşıyor.',
-    image: '/images/hero.png',
-    featured: true,
-    order: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Moku Serisi',
-    slug: 'moku',
-    description: 'El dokuma organik pamuk atkılar ve tekstiller. Toprak tonlarında, doğanın renklerini yaşam alanlarınıza getiriyor.',
-    image: '/images/product-textile.png',
-    featured: true,
-    order: 2,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Sora Paneller',
-    slug: 'sora',
-    description: 'Yumuşak ışık için zarif yarı şeffaf tül paneller. Minimalist estetik ve fonksiyonellik bir arada.',
-    image: '/images/product-curtain.png',
-    featured: true,
-    order: 3,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    name: 'Nami Yatak Odası',
-    slug: 'nami',
-    description: 'Doğal tonlarda %100 organik keten yatak takımları. Huzurlu uyku için tasarlanmış, cildinize saygılı tekstiller.',
-    image: '/images/scene-bedroom.png',
-    featured: false,
-    order: 4,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    name: 'Kumo Tekstiller',
-    slug: 'kumo',
-    description: 'Bulut gibi yumuşak, nefes alan kumaşlardan üretilmiş yastık ve örtüler. Japon estetiğinin sıcak dokunuşu.',
-    image: '/images/product-textile.png',
-    featured: false,
-    order: 5,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '6',
-    name: 'Yuki Kış Serisi',
-    slug: 'yuki',
-    description: 'Soğuk kış günleri için tasarlanmış kalın, izole perdeler ve sıcak tekstiller. Enerji tasarrufu ve konfor bir arada.',
-    image: '/images/hero.png',
-    featured: false,
-    order: 6,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+const fallbackCollections: Collection[] = []
 
 // ============================================
 // Collections Page Component

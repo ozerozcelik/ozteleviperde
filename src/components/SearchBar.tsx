@@ -75,6 +75,7 @@ export function SearchBar({ isOpen, onClose }: SearchBarProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'products' | 'blogs'>('all')
   const inputRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
+  const searchAbortRef = useRef<AbortController | null>(null)
   const router = useRouter()
 
   // Focus input when modal opens
@@ -106,13 +107,20 @@ export function SearchBar({ isOpen, onClose }: SearchBarProps) {
   // Search function with debounce
   const performSearch = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
+      searchAbortRef.current?.abort()
       setResults({ products: [], blogs: [] })
+      setIsLoading(false)
       return
     }
 
+    searchAbortRef.current?.abort()
+    const controller = new AbortController()
+    searchAbortRef.current = controller
     setIsLoading(true)
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=5`)
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=5`, {
+        signal: controller.signal,
+      })
       const data = await response.json()
 
       if (data.success) {
@@ -121,10 +129,16 @@ export function SearchBar({ isOpen, onClose }: SearchBarProps) {
         setResults({ products: [], blogs: [] })
       }
     } catch (error) {
+      if (controller.signal.aborted) return
       console.error('Search error:', error)
       setResults({ products: [], blogs: [] })
     } finally {
-      setIsLoading(false)
+      if (searchAbortRef.current === controller) {
+        searchAbortRef.current = null
+      }
+      if (!controller.signal.aborted) {
+        setIsLoading(false)
+      }
     }
   }, [])
 
@@ -134,8 +148,15 @@ export function SearchBar({ isOpen, onClose }: SearchBarProps) {
       performSearch(query)
     }, 300)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      if (!query.trim()) {
+        searchAbortRef.current?.abort()
+      }
+    }
   }, [query, performSearch])
+
+  useEffect(() => () => searchAbortRef.current?.abort(), [])
 
   // Handle click outside
   const handleBackdropClick = (e: React.MouseEvent) => {

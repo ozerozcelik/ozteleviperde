@@ -1,10 +1,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { buildManagedCollectionsFromSections } from '@/lib/managed-collections'
 import { SITE_URL } from '@/lib/site'
 import { sanitizeImageUrl, sanitizeUrl } from '@/lib/content-sanitizer'
+import { getPublicProductBySlug } from '@/lib/public-catalog'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -12,6 +13,23 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params
+  const product = await getPublicProductBySlug(slug)
+
+  if (product) {
+    return {
+      title: `${product.name} | Ürünlerimiz | ÖzTelevi`,
+      description: product.description,
+      alternates: {
+        canonical: `${SITE_URL}/urun/${product.slug}`,
+      },
+      openGraph: {
+        title: product.name,
+        description: product.description,
+        images: product.image ? [product.image] : [],
+      },
+    }
+  }
+
   const detail = await resolveCollectionDetail(slug)
 
   if (!detail) {
@@ -84,6 +102,12 @@ async function resolveCollectionDetail(slug: string) {
 
 export default async function CollectionDetailPage({ params }: PageProps) {
   const { slug } = await params
+  const product = await getPublicProductBySlug(slug)
+
+  if (product) {
+    redirect(`/urun/${product.slug}`)
+  }
+
   const detail = await resolveCollectionDetail(slug)
 
   if (!detail) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { OzTeleviLogo, OzTeleviLogoLight } from '@/components/OzTeleviLogo'
@@ -44,73 +44,7 @@ interface Product {
   featured: boolean
 }
 
-// Fallback görseller (API'den veri gelmezse)
-const fallbackImages: GalleryImage[] = [
-  {
-    id: '1',
-    src: '/images/hero.png',
-    alt: 'Güneş ışığıyla dolu salon, akan keten perdeler',
-    category: 'Perdeler',
-    title: 'Aira Keten Perdeler',
-    description: 'Güneş ışığıyla dolu salonda akan keten perdeler',
-  },
-  {
-    id: '2',
-    src: '/images/product-curtain.png',
-    alt: 'El dokuma keten perde detayı',
-    category: 'Perdeler',
-    title: 'Doğal Keten Perde',
-    description: 'El dokuma keten perde detayı',
-  },
-  {
-    id: '3',
-    src: '/images/product-textile.png',
-    alt: 'Organik pamuk tekstil ürünleri',
-    category: 'Tekstiller',
-    title: 'Moku Organik Tekstiller',
-    description: 'Toprak tonlarında el dokuma tekstiller',
-  },
-  {
-    id: '4',
-    src: '/images/scene-bedroom.png',
-    alt: 'Doğal tekstillerle huzurlu yatak odası',
-    category: 'Yatak Odası',
-    title: 'Nami Yatak Takımı',
-    description: 'Huzurlu yatak odası dekorasyonu',
-  },
-  {
-    id: '5',
-    src: '/images/hero.png',
-    alt: 'Minimalist salon tasarımı',
-    category: 'Aksesuarlar',
-    title: 'Dekoratif Aksesuarlar',
-    description: 'Minimalist salon aksesuarları',
-  },
-  {
-    id: '6',
-    src: '/images/product-curtain.png',
-    alt: 'Sora tül paneller',
-    category: 'Perdeler',
-    title: 'Sora Tül Paneller',
-    description: 'Yumuşak ışık için zarif yarı şeffaf perdeler',
-  },
-  {
-    id: '7',
-    src: '/images/scene-bedroom.png',
-    alt: 'Lüks yatak odası tekstilleri',
-    category: 'Yatak Odası',
-    title: 'Lüks Yatak Örtüsü',
-    description: 'Organik keten yatak örtüsü koleksiyonu',
-  },
-  {
-    id: '8',
-    src: '/images/product-textile.png',
-    alt: 'El dokuma atkılar',
-    category: 'Tekstiller',
-    title: 'El Dokuma Atkılar',
-    description: 'Doğal tonlarda el dokuma pamuk atkılar',
-  },
-]
+const fallbackImages: GalleryImage[] = []
 
 const categoryLabels: Record<string, string> = {
   'perdeler': 'Perdeler',
@@ -118,14 +52,6 @@ const categoryLabels: Record<string, string> = {
   'yatak-odasi': 'Yatak Odası',
   'aksesuarlar': 'Aksesuarlar',
 }
-
-const categories = [
-  { id: 'all', label: 'Tümü' },
-  { id: 'perdeler', label: 'Perdeler' },
-  { id: 'tekstiller', label: 'Tekstiller' },
-  { id: 'yatak-odasi', label: 'Yatak Odası' },
-  { id: 'aksesuarlar', label: 'Aksesuarlar' },
-]
 
 export default function GalleryPage() {
   const { content: managedPage, loading } = usePageContent('galeri')
@@ -163,23 +89,51 @@ export default function GalleryPage() {
   }, [])
 
   // Ürünleri galeri formatına çevir
-  const galleryImages: GalleryImage[] = useFallback 
-    ? fallbackImages
-    : products.map((product) => ({
-        id: product.id,
-        src: product.image || '/images/product-curtain.png',
-        alt: product.name,
-        category: product.category,
-        title: product.name,
-        description: product.description,
-        productId: product.id,
-        inStock: product.inStock,
-        price: product.price,
-      }))
+  const galleryImages: GalleryImage[] = useMemo(
+    () =>
+      useFallback
+        ? fallbackImages
+        : products.map((product) => ({
+            id: product.id,
+            src: product.image || '/images/product-curtain.png',
+            alt: product.name,
+            category: product.category,
+            title: product.name,
+            description: product.description,
+            productId: product.id,
+            inStock: product.inStock,
+            price: product.price,
+          })),
+    [products, useFallback]
+  )
 
-  const filteredImages = activeFilter === 'all'
-    ? galleryImages
-    : galleryImages.filter(img => img.category === activeFilter)
+  const categories = useMemo(
+    () => [
+      { id: 'all', label: 'Tümü' },
+      ...Array.from(new Set(galleryImages.map((image) => image.category).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, 'tr'))
+        .map((category) => ({
+          id: category,
+          label: categoryLabels[category] || category,
+        })),
+    ],
+    [galleryImages]
+  )
+
+  useEffect(() => {
+    if (activeFilter === 'all') return
+    if (!categories.some((category) => category.id === activeFilter)) {
+      setActiveFilter('all')
+    }
+  }, [activeFilter, categories])
+
+  const filteredImages = useMemo(
+    () =>
+      activeFilter === 'all'
+        ? galleryImages
+        : galleryImages.filter((img) => img.category === activeFilter),
+    [activeFilter, galleryImages]
+  )
 
   useEffect(() => {
     // Intersection Observer for scroll animations
@@ -255,6 +209,7 @@ export default function GalleryPage() {
         <GalleryGrid 
           activeFilter={activeFilter}
           setActiveFilter={setActiveFilter}
+          categories={categories}
           filteredImages={filteredImages}
           onImageClick={setLightboxImage}
           isLoading={isLoading}
@@ -459,12 +414,20 @@ function GalleryHero({ isLoaded }: { isLoaded: boolean }) {
 interface GalleryGridProps {
   activeFilter: string
   setActiveFilter: (filter: string) => void
+  categories: Array<{ id: string; label: string }>
   filteredImages: GalleryImage[]
   onImageClick: (image: GalleryImage) => void
   isLoading: boolean
 }
 
-function GalleryGrid({ activeFilter, setActiveFilter, filteredImages, onImageClick, isLoading }: GalleryGridProps) {
+function GalleryGrid({
+  activeFilter,
+  setActiveFilter,
+  categories,
+  filteredImages,
+  onImageClick,
+  isLoading,
+}: GalleryGridProps) {
   const { addItem, openDrawer } = useCart()
   const [addingProductId, setAddingProductId] = useState<string | null>(null)
   
