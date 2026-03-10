@@ -27,10 +27,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { productId, quantity = 1, notes } = body
     const userId = await getCurrentUserId()
+    const normalizedQuantity =
+      typeof quantity === 'number' ? Math.trunc(quantity) : Number(quantity)
 
     if (!productId) {
       return NextResponse.json(
         { success: false, error: 'Ürün ID gerekli.' },
+        { status: 400 }
+      )
+    }
+
+    if (!Number.isInteger(normalizedQuantity) || normalizedQuantity < 1) {
+      return NextResponse.json(
+        { success: false, error: 'Miktar en az 1 olmalı.' },
         { status: 400 }
       )
     }
@@ -50,6 +59,13 @@ export async function POST(request: NextRequest) {
     if (!product.inStock || product.stock < 1) {
       return NextResponse.json(
         { success: false, error: 'Bu ürün stokta yok.' },
+        { status: 400 }
+      )
+    }
+
+    if (product.stock > 0 && normalizedQuantity > product.stock) {
+      return NextResponse.json(
+        { success: false, error: 'Stokta yeterli ürün yok.' },
         { status: 400 }
       )
     }
@@ -106,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     if (existingItem) {
       // Update quantity
-      const newQuantity = existingItem.quantity + quantity
+      const newQuantity = existingItem.quantity + normalizedQuantity
       if (product.stock && newQuantity > product.stock) {
         return NextResponse.json(
           { success: false, error: 'Stokta yeterli ürün yok.' },
@@ -132,7 +148,7 @@ export async function POST(request: NextRequest) {
       data: {
         cartId: cart.id,
         productId,
-        quantity,
+        quantity: normalizedQuantity,
         price: product.price,
         notes: notes || null,
       },

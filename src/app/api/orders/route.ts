@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/api-auth'
+import authOptions from '@/lib/auth-options'
+import { enforceTrustedOrigin } from '@/lib/request-security'
 
 interface OrderRequestItem {
   productId: string
@@ -152,9 +155,12 @@ export async function PUT(request: NextRequest) {
 // Sipariş oluştur (checkout)
 export async function POST(request: NextRequest) {
   try {
+    const originError = enforceTrustedOrigin(request)
+    if (originError) return originError
+
+    const session = await getServerSession(authOptions)
     const body = await request.json()
     const {
-      userId,
       billingName,
       billingEmail,
       billingPhone,
@@ -267,7 +273,7 @@ export async function POST(request: NextRequest) {
       const createdOrder = await tx.order.create({
         data: {
           orderNumber,
-          userId: userId || null,
+          userId: session?.user?.id || null,
           billingName,
           billingEmail,
           billingPhone,

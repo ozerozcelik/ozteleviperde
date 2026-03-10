@@ -34,12 +34,36 @@ function toNumber(value: unknown) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
     const slug = searchParams.get('slug')
     const category = searchParams.get('category')
     const featured = searchParams.get('featured')
     const inStock = searchParams.get('inStock')
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = parseInt(searchParams.get('offset') || '0')
+
+    // ID ile tek ürün çek
+    if (id) {
+      const product = await db.product.findUnique({
+        where: { id },
+      })
+
+      if (!product) {
+        return NextResponse.json(
+          { error: 'Ürün bulunamadı.', success: false },
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          ...product,
+          images: product.images ? JSON.parse(product.images) : [],
+          features: product.features ? JSON.parse(product.features) : [],
+        },
+      })
+    }
 
     // Slug ile tek ürün çek
     if (slug) {

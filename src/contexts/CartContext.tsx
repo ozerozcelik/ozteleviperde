@@ -195,6 +195,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const readGuestCart = useCallback((): GuestCart | null => {
+    try {
+      const stored = localStorage.getItem(GUEST_CART_KEY)
+      if (!stored) return null
+
+      const parsed = JSON.parse(stored) as Partial<GuestCart>
+      if (!isGuestCartItems(parsed?.items)) {
+        localStorage.removeItem(GUEST_CART_KEY)
+        return null
+      }
+
+      return {
+        items: parsed.items,
+        couponCode: parsed.couponCode,
+      }
+    } catch (error) {
+      console.error('Read guest cart error:', error)
+      localStorage.removeItem(GUEST_CART_KEY)
+      return null
+    }
+  }, [])
+
   // Save cart to localStorage for guests
   const saveGuestCart = useCallback((items: GuestCartItem[], couponCode?: string) => {
     try {
@@ -205,6 +227,43 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const mergeGuestCartToServer = useCallback(async () => {
+    const guestCart = readGuestCart()
+    if (!guestCart || guestCart.items.length === 0) return
+
+    try {
+      await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+
+      for (const item of guestCart.items) {
+        const response = await fetch('/api/cart/item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: item.productId,
+            quantity: item.quantity,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null)
+          console.warn(
+            'Guest cart merge item failed:',
+            item.productId,
+            errorData?.error || response.statusText
+          )
+        }
+      }
+
+      localStorage.removeItem(GUEST_CART_KEY)
+    } catch (error) {
+      console.error('Merge guest cart error:', error)
+    }
+  }, [readGuestCart])
+
   // Refresh cart from API or localStorage
   const refreshCart = useCallback(async () => {
     setIsLoading(true)
@@ -212,6 +271,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const isAuthenticated = status === 'authenticated'
 
       if (isAuthenticated) {
+        await mergeGuestCartToServer()
         const res = await fetch('/api/cart')
         const data = await res.json()
 
@@ -234,7 +294,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }, [loadGuestCart, status])
+  }, [loadGuestCart, mergeGuestCartToServer, status])
 
   // Load cart on mount
   useEffect(() => {
@@ -246,22 +306,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addItem = useCallback(
     async (productId: string, quantity = 1, notes?: string): Promise<boolean> => {
       try {
+        const normalizedQuantity = Math.trunc(quantity)
+        if (!Number.isInteger(normalizedQuantity) || normalizedQuantity < 1) {
+          return false
+        }
+
         // If guest mode, fetch product first and store locally
         if (isGuestMode) {
           // Fetch product details
-          const productRes = await fetch(`/api/products?slug=${productId}`)
+          const productRes = await fetch(`/api/products?id=${productId}`)
           let product: Product | null = null
 
           if (productRes.ok) {
             const productData = await productRes.json()
             product = productData.data
-          } else {
-            // Try by ID
-            const allProductsRes = await fetch('/api/products')
-            if (allProductsRes.ok) {
-              const allProductsData = await allProductsRes.json()
-              product = allProductsData.data?.find((p: Product) => p.id === productId)
-            }
           }
 
           if (!product) {
@@ -280,11 +338,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const existingIndex = currentItems.findIndex((item) => item.productId === productId)
 
           if (existingIndex >= 0) {
-            currentItems[existingIndex].quantity += quantity
+            const nextQuantity = currentItems[existingIndex].quantity + normalizedQuantity
+            if (product.stock > 0 && nextQuantity > product.stock) {
+              return false
+            }
+            currentItems[existingIndex].quantity = nextQuantity
           } else {
+            if (product.stock > 0 && normalizedQuantity > product.stock) {
+              return false
+            }
             currentItems.push({
               productId,
-              quantity,
+              quantity: normalizedQuantity,
               price: product.price,
               product,
             })
@@ -299,7 +364,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const res = await fetch('/api/cart/item', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId, quantity, notes }),
+          body: JSON.stringify({ productId, quantity: normalizedQuantity, notes }),
         })
 
         const data = await res.json()
@@ -362,6 +427,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (isGuestMode) {
           const currentItems = Array.isArray(cart?.items) ? cart.items : []
+          const targetItem = currentItems.find((item) => item.id === itemId)
+          if (!targetItem) return false
+          if (targetItem.product.stock > 0 && quantity > targetItem.product.stock) {
+            return false
+          }
           const updatedItems = currentItems.map((item) =>
             item.id === itemId ? { ...item, quantity } : item
           )
